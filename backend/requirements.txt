@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+swisseph
+pyswisseph
+timezonefinder
+pytz
+requests
+google-genai
+python-dotenv

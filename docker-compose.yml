@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vedic_backend
+    volumes:
+      - ./backend:/app
+      - ./ephemeris:/app/ephemeris
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://vedic_user:vedic_password@db:5432/vedic_db
+      - EPHEME_PATH=/app/ephemeris
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:15-alpine
+    container_name: vedic_db
+    environment:
+      - POSTGRES_USER=vedic_user
+      - POSTGRES_PASSWORD=vedic_password
+      - POSTGRES_DB=vedic_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

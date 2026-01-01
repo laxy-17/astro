@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vedic_backend_dev
+    volumes:
+      - ./backend:/app
+      - ./ephemeris:/app/ephemeris
+    ports:
+      - "8000:8000"
+    environment:
+      - EPHEME_PATH=/app/ephemeris
+      - DATABASE_URL=sqlite:///./vedic.db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vedic_frontend_dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    command: npm run dev
