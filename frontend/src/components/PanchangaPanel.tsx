@@ -8,13 +8,7 @@ interface Props {
     birthDate: string;
 }
 
-const ProgressBar = ({ value }: { value: number }) => (
-    <div style={{ width: '100%', height: '6px', background: '#e0e0e0', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
-        <div style={{ width: `${value}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary-purple-light), var(--primary-purple))' }} />
-    </div>
-);
-
-// Helper for meanings (Placeholder content as requested to follow example structure)
+// Helper for meanings
 const getTithiMeaning = (name: string) => {
     if (name.includes('Purnima')) return 'Full Moon - Completion, fullness, emotional intensity';
     if (name.includes('Amavasya')) return 'New Moon - New beginnings, introspection, rest';
@@ -23,7 +17,6 @@ const getTithiMeaning = (name: string) => {
 };
 
 const getNakshatraMeaning = (_name: string) => {
-    // A simplified map or generic message
     return 'Influences emotional nature and mental outlook';
 };
 
@@ -44,99 +37,186 @@ export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate }) => 
 
     const dashaInfo = useMemo(() => {
         const dates = calculateDashaDates(dashas, birthDate);
-        // Find dasha active TODAY
         const current = dates.find(d => {
             const start = new Date(d.startDate);
             const end = new Date(d.endDate);
-            // Compare with today (ignoring time for simplicity, or just simple timestamp compare)
-            // Note: d.startDate might be formatted string. 
-            // Assuming YYYY-MM-DD or similar parsable by Date()
             return today >= start && today <= end;
         });
 
-        // If born in future or very past, might default to first or last
         if (!current && dates.length > 0) {
-            // If today is before birth, show first
             if (today < new Date(dates[0].startDate)) return { ...dates[0], status: 'Future' };
-            // If today is after last, show last
             return { ...dates[dates.length - 1], status: 'Completed' };
         }
         return current ? { ...current, status: 'Active Now' } : null;
     }, [dashas, birthDate, today]);
 
     return (
-        <div className="panchanga-container">
-            {/* DASHA SECTION (NEW - CRITICAL) */}
+        <div className="space-y-6">
+            {/* Current Mahadasha Context */}
             {dashaInfo && (
-                <div className="panel" style={{ marginBottom: '24px', background: '#f8f9fa', borderLeft: '4px solid var(--primary-purple)' }}>
-                    <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h3 style={{ margin: 0, color: 'var(--primary-purple-dark)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Vimshottari Dasha</h3>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '4px 0' }}>{dashaInfo.lord} Mahadasha</div>
-                            <div style={{ color: '#666', fontSize: '0.9rem' }}>
-                                {dashaInfo.startDate} — {dashaInfo.endDate} ({dashaInfo.status})
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '2rem', opacity: 0.2 }}>🕉️</div>
-                    </div>
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-100 shadow-sm">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        {dashaInfo.lord} Mahadasha
+                    </h3>
+                    <p className="text-sm text-gray-600 font-mono">
+                        {dashaInfo.startDate} — {dashaInfo.endDate} ({dashaInfo.status})
+                    </p>
                 </div>
             )}
 
-            {/* PANCHANGA CARDS */}
-            <div className="panchanga-section">
-                <h3 style={{ marginBottom: '16px', color: 'var(--primary-purple)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                    Panchanga Elements
-                </h3>
+            {/* Panchanga Elements Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                <div className="panchanga-grid">
-                    {/* Card 1: Tithi */}
-                    <div className="panchanga-card lunar">
-                        <div className="card-icon">🌙</div>
-                        <h3>Tithi (Lunar Day)</h3>
-                        <p className="card-value">{data.tithi.name}</p>
-                        <p className="card-sub">{data.tithi.paksha} Paksha</p>
-                        <ProgressBar value={data.tithi.completion} />
-                        <p className="card-meaning">{getTithiMeaning(data.tithi.name)}</p>
+                {/* Tithi Card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">🌙</span>
+                        <div>
+                            <h4 className="font-semibold text-gray-900">Tithi (Lunar Day)</h4>
+                            <p className="text-xs text-gray-500">Moon phase indicator</p>
+                        </div>
                     </div>
 
-                    {/* Card 2: Nakshatra */}
-                    <div className="panchanga-card constellation">
-                        <div className="card-icon">⭐</div>
-                        <h3>Nakshatra</h3>
-                        <p className="card-value">{data.nakshatra.name}</p>
-                        <p className="card-sub">Pada {data.nakshatra.pada} (Lord: {data.nakshatra.lord})</p>
-                        <ProgressBar value={data.nakshatra.completion} />
-                        <p className="card-meaning">{getNakshatraMeaning(data.nakshatra.name)}</p>
-                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900 leading-none">
+                                {data.tithi.name}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {data.tithi.paksha} Paksha
+                            </p>
+                        </div>
 
-                    {/* Card 3: Yoga */}
-                    <div className="panchanga-card yoga">
-                        <div className="card-icon">✨</div>
-                        <h3>Yoga</h3>
-                        <p className="card-value">{data.yoga.name}</p>
-                        <p className="card-sub">#{data.yoga.number}</p>
-                        <p className="card-meaning">{getYogaMeaning(data.yoga.name)}</p>
-                    </div>
+                        {/* Progress Bar */}
+                        <div className="w-full">
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-blue-500"
+                                    style={{ width: `${data.tithi.completion}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1 text-right">
+                                {data.tithi.completion.toFixed(1)}% complete
+                            </p>
+                        </div>
 
-                    {/* Card 4: Karana */}
-                    <div className="panchanga-card karana">
-                        <div className="card-icon">🔄</div>
-                        <h3>Karana</h3>
-                        <p className="card-value">{data.karana.name}</p>
-                        <p className="card-sub">#{data.karana.number}</p>
-                        <p className="card-meaning">{getKaranaMeaning(data.karana.name)}</p>
-                    </div>
-
-                    {/* Card 5: Vara */}
-                    <div className="panchanga-card weekday">
-                        <div className="card-icon">📅</div>
-                        <h3>Vara (Day)</h3>
-                        <p className="card-value">{data.vara}</p>
-                        {/* Vara doesn't have a 'planet' field in the interface currently, but we know it usually corresponds to a planet. 
-                Ideally backend provides it, but for now we just show name. */}
-                        <p className="card-meaning">{getVaraMeaning(data.vara)}</p>
+                        <div className="pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-700 italic">
+                                "{getTithiMeaning(data.tithi.name)}"
+                            </p>
+                        </div>
                     </div>
                 </div>
+
+                {/* Nakshatra Card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">⭐</span>
+                        <div>
+                            <h4 className="font-semibold text-gray-900">Nakshatra</h4>
+                            <p className="text-xs text-gray-500">Lunar mansion</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900 leading-none">
+                                {data.nakshatra.name}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Pada {data.nakshatra.pada} • Lord: {data.nakshatra.lord}
+                            </p>
+                        </div>
+
+                        <div className="w-full">
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-indigo-500"
+                                    style={{ width: `${data.nakshatra.completion}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1 text-right">
+                                {data.nakshatra.completion.toFixed(1)}% complete
+                            </p>
+                        </div>
+
+                        <div className="pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-700 italic">
+                                "{getNakshatraMeaning(data.nakshatra.name)}"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Yoga Card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">✨</span>
+                        <div>
+                            <h4 className="font-semibold text-gray-900">Yoga</h4>
+                            <p className="text-xs text-gray-500">Sun-Moon combination</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <p className="text-2xl font-bold text-gray-900">
+                            {data.yoga.name}
+                        </p>
+
+                        <div className="pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-700 italic">
+                                "{getYogaMeaning(data.yoga.name)}"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Karana Card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">🔄</span>
+                        <div>
+                            <h4 className="font-semibold text-gray-900">Karana</h4>
+                            <p className="text-xs text-gray-500">Half of Tithi</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <p className="text-2xl font-bold text-gray-900">
+                            {data.karana.name}
+                        </p>
+
+                        <div className="pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-700 italic">
+                                "Action: {getKaranaMeaning(data.karana.name)}"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Vara Card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-3xl">📅</span>
+                        <div>
+                            <h4 className="font-semibold text-gray-900">Vara</h4>
+                            <p className="text-xs text-gray-500">Day of the week</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <p className="text-2xl font-bold text-gray-900">
+                            {data.vara}
+                        </p>
+
+                        <div className="pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-700 italic">
+                                "{getVaraMeaning(data.vara)}"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

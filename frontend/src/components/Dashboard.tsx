@@ -5,14 +5,14 @@ import { ControlPanel } from './ControlPanel';
 import { SouthIndianChart } from './SouthIndianChart';
 import { NorthIndianChart } from './NorthIndianChart';
 import { PlanetaryTable } from './PlanetaryTable';
-import { DashaTable } from './DashaTable';
-import { StrengthBar } from './StrengthBar';
+import { DashaTab } from './DashaTab';
 import { DivisionalChartsTab } from './DivisionalChartsTab';
 import { ChartLibrary } from './ChartLibrary';
 import { generatePDF } from '../utils/pdfGenerator';
 import { BirthParticulars } from './BirthParticulars';
 import { PanchangaPanel } from './PanchangaPanel';
 import { TransitsTab } from './TransitsTab';
+import { InsightsPanel } from './InsightsPanel';
 
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
@@ -475,20 +475,15 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                         {/* TAB 3: DASHAS */}
                         <TabsContent value="dashas" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {activeTab === 'dashas' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-6">
                                     {chartData && currentDetails ? (
-                                        <>
-                                            <Card className="glass-panel p-4 bg-black/40">
-                                                <DashaTable dashas={chartData.dashas} birthDate={currentDetails.date} />
-                                            </Card>
-                                            {chartData.strengths && (
-                                                <Card className="glass-panel p-4 bg-black/40">
-                                                    <StrengthBar strengths={chartData.strengths} />
-                                                </Card>
-                                            )}
-                                        </>
+                                        <DashaTab
+                                            dashas={chartData.dashas}
+                                            strengths={chartData.strengths}
+                                            birthDate={currentDetails.date}
+                                        />
                                     ) : (
-                                        <div className="col-span-2 p-10 text-center text-muted-foreground glass-panel rounded-xl">Calculate chart first</div>
+                                        <div className="p-10 text-center text-muted-foreground glass-panel rounded-xl">Calculate chart first</div>
                                     )}
                                 </div>
                             )}
@@ -506,77 +501,12 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                         {/* TAB 5: MENTOR */}
                         <TabsContent value="mentor" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {activeTab === 'mentor' && (
-                                <div className="min-h-[400px]">
-                                    {insightsLoading ? (
-                                        <div className="flex flex-col items-center justify-center p-20 text-cosmic-nebula">
-                                            <div className="animate-spin text-4xl mb-4">🔮</div>
-                                            <p>Consulting the stars...</p>
-                                        </div>
-                                    ) : (
-                                        coreInsights || prediction || dosha ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                                {/* Daily Forecast */}
-                                                {prediction && (
-                                                    <Card className="glass-panel border-l-4 border-l-cosmic-starlight bg-black/40">
-                                                        <CardContent className="p-6">
-                                                            <div className="flex items-center gap-3 mb-4">
-                                                                <div className="p-3 rounded-full bg-cosmic-starlight/10 text-2xl">☀️</div>
-                                                                <h3 className="font-bold text-lg text-cosmic-starlight">Daily Forecast</h3>
-                                                            </div>
-                                                            <p className="text-gray-300 leading-relaxed">{prediction}</p>
-                                                        </CardContent>
-                                                    </Card>
-                                                )}
-
-                                                {/* Dosha */}
-                                                {dosha && (
-                                                    <Card className="glass-panel border-l-4 border-l-red-500 bg-black/40">
-                                                        <CardContent className="p-6">
-                                                            <div className="flex items-center gap-3 mb-4">
-                                                                <div className="p-3 rounded-full bg-red-500/10 text-2xl">🔥</div>
-                                                                <h3 className="font-bold text-lg text-red-400">Dosha Analysis</h3>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <p className="font-semibold text-white">{dosha.primary}</p>
-                                                                <p className="text-gray-400 text-sm">{dosha.description}</p>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                )}
-
-                                                {/* Core Insights */}
-                                                {coreInsights && (
-                                                    <>
-                                                        <Card className="glass-panel bg-black/40">
-                                                            <CardContent className="p-6">
-                                                                <h3 className="font-bold text-lg text-cosmic-nebula mb-2">Personality</h3>
-                                                                <p className="text-gray-300 text-sm">{coreInsights.personal}</p>
-                                                            </CardContent>
-                                                        </Card>
-                                                        <Card className="glass-panel bg-black/40">
-                                                            <CardContent className="p-6">
-                                                                <h3 className="font-bold text-lg text-blue-400 mb-2">Career & Purpose</h3>
-                                                                <p className="text-gray-300 text-sm">{coreInsights.career}</p>
-                                                            </CardContent>
-                                                        </Card>
-                                                        <Card className="glass-panel bg-black/40">
-                                                            <CardContent className="p-6">
-                                                                <h3 className="font-bold text-lg text-pink-400 mb-2">Relationships</h3>
-                                                                <p className="text-gray-300 text-sm">{coreInsights.relationships}</p>
-                                                            </CardContent>
-                                                        </Card>
-                                                    </>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center p-20 text-muted-foreground glass-panel rounded-xl">
-                                                <div className="text-6xl mb-6 opacity-20">🤖</div>
-                                                <h3 className="text-xl font-bold mb-2">Unlock Your Cosmic Blueprint</h3>
-                                                <p>Calculate a chart to receive AI personalized insights.</p>
-                                            </div>
-                                        )
-                                    )}
-                                </div>
+                                <InsightsPanel
+                                    prediction={prediction}
+                                    dosha={dosha}
+                                    coreInsights={coreInsights}
+                                    loading={insightsLoading}
+                                />
                             )}
                         </TabsContent>
                     </Tabs>

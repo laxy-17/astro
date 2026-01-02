@@ -90,7 +90,7 @@ export const PlanetaryTable: React.FC<Props> = ({ planets, ascendant }) => {
                                         {planet.name}
                                     </TableCell>
                                     <TableCell className="py-2.5 text-text-secondary text-sm">{planet.sign}</TableCell>
-                                    <TableCell className="py-2.5 text-text-secondary text-right font-mono text-sm tabular-nums">{planet.longitude}</TableCell>
+                                    <TableCell className="py-2.5 text-text-secondary text-right font-mono text-sm tabular-nums whitespace-nowrap">{planet.longitude}</TableCell>
                                     <TableCell className="py-2.5 text-text-secondary text-sm">{planet.nakshatra}</TableCell>
                                     <TableCell className="py-2.5 text-text-secondary text-center text-sm">{planet.pada}</TableCell>
                                     <TableCell className="py-2.5 text-text-secondary text-right font-mono text-xs tabular-nums">

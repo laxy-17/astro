@@ -11,67 +11,83 @@ interface Props {
 export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights, loading }) => {
     if (loading) {
         return (
-            <div className="panel" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                <div className="spinner" style={{ marginBottom: '10px' }}>🔮</div>
-                Connecting to Cosmic Consciousness...
+            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+                <div className="text-4xl mb-2 animate-bounce">🔮</div>
+                <div className="text-sm font-medium">Connecting to Cosmic Consciousness...</div>
             </div>
         );
     }
 
     if (!prediction && !dosha && !coreInsights) {
-        return null; // Don't show empty panel
+        return null;
     }
 
     return (
-        <div className="panel">
-            <div className="panel-header" style={{ background: 'linear-gradient(90deg, #6a1b9a, #8e24aa)', color: 'white' }}>
-                AI Vedic Mentor
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-700 to-purple-600 px-6 py-4">
+                <h2 className="text-white font-bold text-lg flex items-center gap-2">
+                    <span>🧙‍♂️</span> AI Vedic Mentor
+                </h2>
             </div>
-            <div className="panel-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
 
-                {/* Core Insights (Priority) */}
+            <div className="p-6 space-y-6">
+                {/* Core Insights */}
                 {coreInsights && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <InsightCard title="👤 Personal Profile" content={coreInsights.personal} color="#e1bee7" />
-                        <InsightCard title="💼 Career Guidance" content={coreInsights.career} color="#c5cae9" />
-                        <InsightCard title="❤️ Relationships" content={coreInsights.relationships} color="#f8bbd0" />
-                        <InsightCard title="✅ Do's & Don'ts" content={coreInsights.dos_donts} color="#b2dfdb" />
+                    <div className="space-y-4">
+                        <InsightCard
+                            title="👤 Personal Profile"
+                            content={coreInsights.personal}
+                            borderColor="border-purple-200"
+                            headerBg="bg-purple-100"
+                            headerText="text-purple-900"
+                        />
+                        <InsightCard
+                            title="💼 Career Guidance"
+                            content={coreInsights.career}
+                            borderColor="border-indigo-200"
+                            headerBg="bg-indigo-100"
+                            headerText="text-indigo-900"
+                        />
+                        <InsightCard
+                            title="❤️ Relationships"
+                            content={coreInsights.relationships}
+                            borderColor="border-pink-200"
+                            headerBg="bg-pink-100"
+                            headerText="text-pink-900"
+                        />
+                        <InsightCard
+                            title="✅ Do's & Don'ts"
+                            content={coreInsights.dos_donts}
+                            borderColor="border-emerald-200"
+                            headerBg="bg-emerald-100"
+                            headerText="text-emerald-900"
+                        />
                     </div>
                 )}
 
                 {/* Daily Prediction */}
                 {prediction && (
-                    <div>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '8px', color: '#4a148c' }}>Daily Forecast</h3>
-                        <div style={{
-                            background: '#f3e5f5',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem',
-                            lineHeight: '1.5',
-                            borderLeft: '4px solid #8e24aa'
-                        }}>
-                            {prediction}
-                        </div>
+                    <div className="bg-purple-50 rounded-lg p-5 border border-purple-100">
+                        <h3 className="font-bold text-purple-900 mb-2 flex items-center gap-2">
+                            <span>📅</span> Daily Forecast
+                        </h3>
+                        <p className="text-gray-800 leading-relaxed text-[15px]">{prediction}</p>
                     </div>
                 )}
 
                 {/* Dosha Report */}
                 {dosha && dosha.mangal_dosh && (
-                    <div>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '8px', color: '#b71c1c' }}>Dosha Analysis</h3>
-                        <div style={{
-                            background: '#ffebee',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem'
-                        }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Mangal Dosh (Mars Defect)</div>
-                            <div>
+                    <div className="bg-red-50 rounded-lg p-5 border border-red-100">
+                        <h3 className="font-bold text-red-900 mb-2 flex items-center gap-2">
+                            <span>🔥</span> Dosha Analysis
+                        </h3>
+                        <div className="space-y-1">
+                            <div className="font-semibold text-gray-900">Mangal Dosh (Mars Defect)</div>
+                            <div className="text-sm">
                                 {dosha.mangal_dosh.is_dosha_present_mars_from_lagna || dosha.mangal_dosh.is_dosha_present_mars_from_moon ? (
-                                    <span style={{ color: '#c62828', fontWeight: 'bold' }}>Present</span>
+                                    <span className="text-red-700 font-bold bg-red-100 px-2 py-0.5 rounded">Present</span>
                                 ) : (
-                                    <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>Not Present</span>
+                                    <span className="text-green-700 font-bold bg-green-100 px-2 py-0.5 rounded">Not Present</span>
                                 )}
                             </div>
                         </div>
@@ -82,30 +98,23 @@ export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights
     );
 };
 
-const InsightCard: React.FC<{ title: string, content: string, color: string }> = ({ title, content, color }) => (
-    <div style={{
-        background: 'white',
-        border: `1px solid ${color}`,
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    }}>
-        <div style={{
-            background: color,
-            padding: '8px 12px',
-            fontWeight: 'bold',
-            color: '#333',
-            fontSize: '0.95rem'
-        }}>
-            {title}
+interface CardProps {
+    title: string;
+    content: string;
+    borderColor: string;
+    headerBg: string;
+    headerText: string;
+}
+
+const InsightCard: React.FC<CardProps> = ({ title, content, borderColor, headerBg, headerText }) => (
+    <div className={`border ${borderColor} rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow`}>
+        <div className={`${headerBg} px-4 py-2 border-b ${borderColor}`}>
+            <h3 className={`font-semibold ${headerText} text-sm`}>{title}</h3>
         </div>
-        <div style={{
-            padding: '12px',
-            fontSize: '0.9rem',
-            lineHeight: '1.5',
-            whiteSpace: 'pre-wrap'
-        }}>
-            {content}
+        <div className="p-4">
+            <p className="text-gray-800 leading-relaxed text-[15px] whitespace-pre-wrap">
+                {content}
+            </p>
         </div>
     </div>
 );
