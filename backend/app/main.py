@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables first
 load_dotenv()
 from .models import BirthDetails, ChartResponse, PlanetPosition, House, Panchanga
-from .engine import calculate_chart
+from .engine import calculate_chart, get_current_transits
 from .database import init_db, save_chart, list_charts, delete_chart, SavedChart
 from .integrations.vedic_astro_api import VedicAstroService
 import logging
@@ -70,7 +70,7 @@ def generate_insights(details: BirthDetails):
 
 # Enable CORS for frontend development and production
 # Configure allowed origins from environment variable or default to localhost
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:8000").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:8000,http://127.0.0.1:5173").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -166,6 +166,31 @@ def health_check():
         "status": "healthy",
         "message": "Vedic Astrology API is operational"
     }
+
+from .engine import calculate_chart, get_current_transits, get_current_transits_extended
+        
+@app.get("/api/transits/current", tags=["Tools"])
+def get_current_transits_endpoint():
+    """Get current real-time planetary positions."""
+    return get_current_transits()
+
+@app.get("/api/transits/current/extended", tags=["Tools"])
+def get_extended_transits_endpoint():
+    """
+    Get current transits including outer planets and special points.
+    Updates every 5 minutes.
+    """
+    try:
+        from datetime import datetime, timedelta
+        transits = get_current_transits_extended()
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "bodies": transits,
+            "next_update": (datetime.utcnow() + timedelta(minutes=5)).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Extended transits error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Error handlers
 @app.exception_handler(ValueError)

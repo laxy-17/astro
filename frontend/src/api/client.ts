@@ -219,6 +219,19 @@ export const getDailyInsight = async (signId: number, date: string): Promise<{ p
   return response.data;
 };
 
+export interface TransitPlanet {
+  name: string;
+  sign: string;
+  degree: number;
+  nakshatra: string;
+  retrograde: boolean;
+}
+
+export const getTransits = async (): Promise<TransitPlanet[]> => {
+  const response = await axiosInstance.get<TransitPlanet[]>('/api/transits/current');
+  return response.data;
+};
+
 export const getDoshaReport = async (details: BirthDetails): Promise<any> => {
   const response = await axiosInstance.post<any>('/insights/dosha', {
     date: details.date,

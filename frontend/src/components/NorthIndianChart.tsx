@@ -49,21 +49,20 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
     };
 
     return (
-        <div className="panel" style={{ minHeight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#F9F7FF', padding: '16px' }}>
-            <div className="panel-header" style={{ width: '100%', marginBottom: '16px', background: '#7C3AED' }}>Rashi (D-1)</div>
-            <div style={{ width: '100%', maxWidth: '400px', aspectRatio: '1/1', position: 'relative' }}>
-                <svg width="100%" height="100%" viewBox="0 0 400 400">
+        <div className="w-full h-full flex flex-col items-center bg-transparent">
+            <div className="w-full h-full relative aspect-square">
+                <svg width="100%" height="100%" viewBox="0 0 400 400" className="w-full h-full">
                     {/* Background */}
-                    <rect x="0" y="0" width="400" height="400" fill="white" />
+                    <rect x="0" y="0" width="400" height="400" className="fill-card" />
 
                     {/* Diamond Grid Borders */}
                     {/* Outer Box */}
-                    <rect x="0" y="0" width="400" height="400" fill="none" stroke="#7C3AED" strokeWidth="2" />
+                    <rect x="0" y="0" width="400" height="400" fill="none" className="stroke-neutral-400 dark:stroke-white/20" strokeWidth="2" />
                     {/* Cross Diagonals */}
-                    <line x1="0" y1="0" x2="400" y2="400" stroke="#7C3AED" strokeWidth="2" />
-                    <line x1="400" y1="0" x2="0" y2="400" stroke="#7C3AED" strokeWidth="2" />
+                    <line x1="0" y1="0" x2="400" y2="400" className="stroke-neutral-400 dark:stroke-white/20" strokeWidth="2" />
+                    <line x1="400" y1="0" x2="0" y2="400" className="stroke-neutral-400 dark:stroke-white/20" strokeWidth="2" />
                     {/* Inner Diamond */}
-                    <polygon points="200,0 0,200 200,400 400,200" fill="none" stroke="#7C3AED" strokeWidth="2" />
+                    <polygon points="200,0 0,200 200,400 400,200" fill="none" className="stroke-neutral-400 dark:stroke-white/20" strokeWidth="2" />
 
                     {/* House Content */}
                     {houseCenters.map((pos, i) => {
@@ -93,8 +92,8 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
                     {/* House Numbers (Small Circles) */}
                     {houseNumPos.map((pos, i) => (
                         <g key={`num-${i}`}>
-                            <circle cx={pos.x} cy={pos.y} r="10" fill="white" stroke="#7C3AED" strokeWidth="1" />
-                            <text x={pos.x} y={pos.y} dy="4" textAnchor="middle" fontSize="11" fill="#7C3AED" fontWeight="bold">
+                            <circle cx={pos.x} cy={pos.y} r="10" className="fill-card stroke-neutral-400 dark:stroke-white/20" strokeWidth="1" />
+                            <text x={pos.x} y={pos.y} dy="4" textAnchor="middle" fontSize="11" className="fill-muted-foreground" fontWeight="bold">
                                 {i + 1}
                             </text>
                         </g>
@@ -102,15 +101,14 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
 
                 </svg>
             </div>
-            {/* Legend or Toggle could go here */}
         </div>
     );
 };
 
 const HouseInfo: React.FC<{ x: number, y: number, planets: string[], sign: string, isAscendant: boolean }> = ({ x, y, planets, sign, isAscendant }) => (
-    <text x={x} y={y} textAnchor="middle" fill="#1F2937">
+    <text x={x} y={y} textAnchor="middle" className="fill-foreground">
         {/* Sign Name */}
-        <tspan x={x} dy="-14" fontSize="10" fill="#999" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>{sign}</tspan>
+        <tspan x={x} dy="-14" fontSize="10" className="fill-muted-foreground" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>{sign}</tspan>
 
         {/* ASC Label if House 1 */}
         {isAscendant && (
@@ -121,7 +119,7 @@ const HouseInfo: React.FC<{ x: number, y: number, planets: string[], sign: strin
         {planets.length > 0 && (
             <tspan x={x} dy={isAscendant ? "14" : "16"} fontWeight="700" fontSize="13">
                 {planets.map((p, i) => (
-                    <tspan key={i} fill="#1F2937">{p} </tspan>
+                    <tspan key={i} className="fill-foreground">{p} </tspan>
                 ))}
             </tspan>
         )}

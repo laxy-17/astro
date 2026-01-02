@@ -1,6 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { listCharts, deleteChart, type SavedChart, type BirthDetails } from '../api/client';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area" // Assuming ScrollArea is installed? If not, standard div overflow is fine.
+import { Trash2, FolderOpen, Search, X } from "lucide-react"
 
 interface Props {
     onLoad: (details: BirthDetails) => void;
@@ -51,93 +55,111 @@ export const ChartLibrary: React.FC<Props> = ({ onLoad, onClose }) => {
         onClose();
     };
 
-    // Filter and Sort Logic
     const filteredCharts = charts
         .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .sort((a, b) => {
             if (sortMode === 'name') {
                 return a.name.localeCompare(b.name);
             } else {
-                // Sort by date (Assuming ID indicates recency or saving logic? 
-                // SavedChart has 'created_at'? I need to check interface.
-                // Assuming ID is auto-increment, higher ID = newer.
-                return b.id - a.id;
+                return b.id - a.id; // Newer first
             }
         });
 
     return (
-        <div style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0 }}>My Chart Library</h3>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+        <Card className="w-full h-full border-0 bg-background shadow-2xl flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border">
+                <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
+                    <span className="text-2xl">📚</span> Chart Library
+                    <span className="text-sm font-normal text-muted-foreground ml-2">({charts.length})</span>
+                </CardTitle>
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:text-white">
+                    <X className="w-5 h-5" />
+                </Button>
+            </CardHeader>
+
+            <div className="p-4 border-b border-border space-y-4 bg-muted/50">
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 bg-muted border border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-cosmic-nebula"
+                        />
+                    </div>
+                    <select
+                        value={sortMode}
+                        onChange={(e) => setSortMode(e.target.value as 'date' | 'name')}
+                        className="bg-muted border border-border text-foreground text-sm rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-cosmic-nebula"
+                    >
+                        <option value="date">Newest</option>
+                        <option value="name">A-Z</option>
+                    </select>
+                </div>
             </div>
 
-            {/* Steps 3.3 & 3.4: Search and Sort Controls */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                <input
-                    type="text"
-                    placeholder="Search charts..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-                <select
-                    value={sortMode}
-                    onChange={(e) => setSortMode(e.target.value as 'date' | 'name')}
-                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                >
-                    <option value="date">Newest First</option>
-                    <option value="name">Name (A-Z)</option>
-                </select>
-            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                {loading && (
+                    <div className="text-center py-10 text-muted-foreground animate-pulse">
+                        Listing stars...
+                    </div>
+                )}
 
-            {loading && <p>Loading...</p>}
-            {error && <p className="text-red">{error}</p>}
+                {error && (
+                    <div className="text-center py-10 text-red-400">
+                        {error}
+                    </div>
+                )}
 
-            {!loading && charts.length === 0 && (
-                <p style={{ color: '#888', fontStyle: 'italic' }}>No saved charts yet.</p>
-            )}
+                {!loading && filteredCharts.length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground">
+                        <div className="text-4xl mb-2 opacity-30">📂</div>
+                        No charts found.
+                    </div>
+                )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
                 {filteredCharts.map(chart => (
-                    <div key={chart.id} className="panel" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <div style={{ fontWeight: 'bold' }}>{chart.name}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                                {chart.date} @ {chart.time} ({chart.ayanamsa_mode})
+                    <div
+                        key={chart.id}
+                        className="group flex items-center justify-between p-3 rounded-lg bg-muted border border-border hover:bg-muted/80 hover:border-sidebar-accent transition-all duration-200"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-bold border border-border">
+                                {chart.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                                    {chart.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <span>{chart.date}</span>
+                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                    <span>{chart.time}</span>
+                                </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
+
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                                size="sm"
+                                className="h-8 bg-cosmic-nebula hover:bg-purple-600 text-white border-0"
                                 onClick={() => handleLoad(chart)}
-                                style={{
-                                    padding: '6px 12px',
-                                    background: 'var(--primary-purple)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
                             >
-                                Load
-                            </button>
-                            <button
+                                <FolderOpen className="w-3 h-3 mr-2" /> Load
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="destructive"
+                                className="h-8 w-8 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20"
                                 onClick={() => handleDelete(chart.id)}
-                                style={{
-                                    padding: '6px 12px',
-                                    background: '#f44336',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
                             >
-                                Delete
-                            </button>
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
                         </div>
                     </div>
                 ))}
             </div>
-        </div>
+        </Card>
     );
 };

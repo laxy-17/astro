@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { ChartResponse, BirthDetails, CoreInsights } from '../api/client';
 import { calculateChart, getDailyInsight, getDoshaReport, generateCoreInsights, saveChart } from '../api/client';
@@ -13,6 +12,13 @@ import { ChartLibrary } from './ChartLibrary';
 import { generatePDF } from '../utils/pdfGenerator';
 import { BirthParticulars } from './BirthParticulars';
 import { PanchangaPanel } from './PanchangaPanel';
+import { TransitsTab } from './TransitsTab';
+
+// Shadcn UI Imports
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sparkles, Calendar, BookOpen, User, Save, FileText, Library } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface PersistentFormProps {
     onSuccess: (data: ChartResponse, details: BirthDetails) => void;
@@ -76,34 +82,42 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
     };
 
     return (
-        <div className="panel" style={{ border: 'none', background: 'transparent' }}>
-            <h3 style={{ marginBottom: '12px', color: 'var(--primary-purple)', fontWeight: 'bold' }}>Birth Details</h3>
-            <form onSubmit={handleSubmit} className="sidebar-form">
-                {error && <div className="text-red" style={{ padding: '8px', background: '#ffebee', fontSize: '0.8rem', borderRadius: '4px', marginBottom: '8px' }}>{error}</div>}
+        <div className="space-y-4">
+            <h3 className="text-lg font-bold text-cosmic-starlight flex items-center gap-2">
+                <span className="text-xl">✨</span> Birth Details
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                    <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+                        {error}
+                    </div>
+                )}
 
-                <div>
-                    <label>Date</label>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
                     <input
                         type="date"
                         required
                         value={details.date}
                         onChange={(e) => handleChange('date', e.target.value)}
+                        className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
                     />
                 </div>
 
-                <div>
-                    <label>Time</label>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</label>
                     <input
                         type="time"
                         required
                         value={details.time}
                         onChange={(e) => handleChange('time', e.target.value)}
+                        className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
                     />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                        <label>Lat</label>
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lat</label>
                         <input
                             type="number"
                             step="any"
@@ -111,10 +125,11 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                             required
                             value={details.latitude || ''}
                             onChange={(e) => handleChange('latitude', parseFloat(e.target.value))}
+                            className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
                         />
                     </div>
-                    <div>
-                        <label>Long</label>
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Long</label>
                         <input
                             type="number"
                             step="any"
@@ -122,42 +137,28 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                             required
                             value={details.longitude || ''}
                             onChange={(e) => handleChange('longitude', parseFloat(e.target.value))}
+                            className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
                         />
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                    <button
+                <div className="flex gap-2 pt-2">
+                    <Button
                         type="submit"
                         disabled={loading}
-                        style={{
-                            flex: 1,
-                            padding: '10px',
-                            background: 'var(--primary-purple)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                        }}
+                        className="flex-1 bg-cosmic-nebula hover:bg-purple-700 text-white font-bold"
                     >
-                        {loading ? '⏳' : 'Calculate'}
-                    </button>
-                    <button
+                        {loading ? 'Calculating...' : 'Calculate Chart'}
+                    </Button>
+                    <Button
                         type="button"
+                        variant="secondary"
                         onClick={handleReset}
-                        style={{
-                            padding: '10px',
-                            background: '#e0e0e0',
-                            color: '#333',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
+                        className="bg-white/10 hover:bg-white/20 text-white"
                         title="Reset Form"
                     >
                         ↺
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>
@@ -175,7 +176,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
     const [ayanamsa, setAyanamsa] = useState<string>('LAHIRI');
 
     // Main Tabs State
-    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'mentor'>('charts');
+    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor'>('charts');
 
     // Sub-states for Charts Tab
     const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
@@ -278,18 +279,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
             const data = await calculateChart(details);
             onCalculate(data, details);
             fetchInsights(data, details);
-
-            // Also update the persistent form state if possible, but the component reads from localStorage on mount.
-            // We can update localStorage so the form reflects it on next reload, or lift state up completely.
-            // For now, simpler: Update localStorage
             localStorage.setItem('last_birth_details', JSON.stringify(details));
-            // Force reload to sync form? No, that's jarring.
-            // Ideally FormWrapper watches localStorage or we pass 'details' prop to it. 
-            // For MVP, user will see the chart, and if they edit the form on the left, it will still have old values unless we pass defaults.
-            // We can just accept that loading a chart from library overwrites the VIEW but maybe not the FORM INPUTS immediately unless we make Form fully controlled by parent.
-            // Let's stick to the request: "prior entry unless i press reset". 
-            // So loading from library IS a form of entry? Probably yes.
-            // I will trigger a window event or use a context if I wanted to be fancy, but let's just alert the user.
         } catch (e) {
             console.error(e);
             alert("Failed to load chart calculations.");
@@ -307,261 +297,304 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
     };
 
     return (
-        <div className="app-container">
+        <div className="min-h-screen bg-background dark:bg-[url('/images/backgrounds/stars-bg.png')] dark:bg-cover dark:bg-fixed text-foreground font-sans">
             {/* Top Header */}
-            <header className="app-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', letterSpacing: '1px', color: 'white' }}>8stro</span>
+            <header className="flex items-center justify-between p-4 border-b border-border bg-background/80 dark:bg-cosmic-void/80 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cosmic-nebula to-cosmic-starlight flex items-center justify-center shadow-glow">
+                        <span className="text-white font-bold text-lg">8</span>
+                    </div>
+                    <span className="text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-muted-foreground">
+                        8STRO
+                    </span>
                     {currentDetails && (
-                        <span style={{ opacity: 0.9, fontSize: '0.9rem', fontWeight: 500 }}>
-                            {currentDetails.date} • {currentDetails.time}
-                        </span>
+                        <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/5 rounded-lg border border-white/5">
+                            <span className="text-xs text-muted-foreground uppercase tracking-wider">Current Chart</span>
+                            <span className="text-sm font-medium text-cosmic-starlight">
+                                {currentDetails.date} • {currentDetails.time}
+                            </span>
+                        </div>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button className="header-btn" onClick={() => setShowLibrary(true)}>
-                        📚 Library
-                    </button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowLibrary(true)} className="bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10">
+                        <Library className="w-4 h-4 mr-2" /> Library
+                    </Button>
                     {chartData && (
                         <>
-                            <button className="header-btn" onClick={handleSaveChart} style={{ background: '#4CAF50' }}>
-                                💾 Save
-                            </button>
-                            <button className="header-btn" onClick={handleDownloadPDF} style={{ background: '#FF9800' }}>
-                                📄 PDF
-                            </button>
+                            <Button size="sm" onClick={handleSaveChart} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/30">
+                                <Save className="w-4 h-4 mr-2" /> Save
+                            </Button>
+                            <Button size="sm" onClick={handleDownloadPDF} className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-600/30">
+                                <FileText className="w-4 h-4 mr-2" /> PDF
+                            </Button>
                         </>
                     )}
                 </div>
             </header>
 
             {/* Main Layout */}
-            <div className="app-layout">
+            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-6 max-w-[1920px] mx-auto">
                 {/* Sidebar */}
-                <div className="sidebar">
-                    <PersistentForm onSuccess={handleChartCalculated} ayanamsa={ayanamsa} />
+                <aside className="space-y-6">
+                    <Card className="glass-panel border-border bg-card/50">
+                        <CardContent className="p-6">
+                            <PersistentForm onSuccess={handleChartCalculated} ayanamsa={ayanamsa} />
+                        </CardContent>
+                    </Card>
 
-                    <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '8px 0' }} />
-
-                    <ControlPanel
-                        ayanamsa={ayanamsa}
-                        onAyanamsaChange={handleAyanamsaChange}
-                    />
-                </div>
+                    <Card className="glass-panel border-border bg-card/50">
+                        <CardContent className="p-6">
+                            <ControlPanel
+                                ayanamsa={ayanamsa}
+                                onAyanamsaChange={handleAyanamsaChange}
+                            />
+                        </CardContent>
+                    </Card>
+                </aside>
 
                 {/* Main Content */}
-                <div className="main-content">
-                    {/* Tab Navigation */}
-                    <div className="tab-header">
-                        <button
-                            className={`tab-button ${activeTab === 'charts' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('charts')}
-                        >
-                            📊 Charts & Planets
-                        </button>
-                        <button
-                            className={`tab-button ${activeTab === 'panchanga' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('panchanga')}
-                        >
-                            📅 Panchanga
-                        </button>
-                        <button
-                            className={`tab-button ${activeTab === 'dashas' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('dashas')}
-                        >
-                            ⏳ Dashas & Strength
-                        </button>
-                        <button
-                            className={`tab-button ${activeTab === 'mentor' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('mentor')}
-                        >
-                            🤖 AI Mentor
-                        </button>
-                    </div>
+                <main className="space-y-6">
 
-                    {/* Tab Content */}
-                    <div className="tab-content">
+
+                    {/* Tabs Navigation */}
+                    <Tabs defaultValue="charts" className="w-full" onValueChange={(val) => setActiveTab(val as any)}>
+                        <TabsList className="grid w-full grid-cols-5 bg-muted border border-border h-12 p-1 mb-6">
+                            <TabsTrigger value="charts" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                                <Sparkles className="w-4 h-4 mr-2" /> Charts
+                            </TabsTrigger>
+                            <TabsTrigger value="panchanga" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                                <Calendar className="w-4 h-4 mr-2" /> Panchanga
+                            </TabsTrigger>
+                            <TabsTrigger value="dashas" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                                <BookOpen className="w-4 h-4 mr-2" /> Dashas
+                            </TabsTrigger>
+                            <TabsTrigger value="transits" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                                <Sparkles className="w-4 h-4 mr-2" /> Transits
+                            </TabsTrigger>
+                            <TabsTrigger value="mentor" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                                <User className="w-4 h-4 mr-2" /> AI Mentor
+                            </TabsTrigger>
+                        </TabsList>
 
                         {/* TAB 1: CHARTS */}
-                        {activeTab === 'charts' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {currentDetails && <BirthParticulars details={currentDetails} />}
+                        <TabsContent value="charts" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'charts' && (
+                                <div className="space-y-6">
+                                    {currentDetails && <BirthParticulars details={currentDetails} />}
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', alignItems: 'start' }}>
-                                    {/* Chart Side */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {/* Chart Toggle Tabs */}
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                className={`tab-btn ${activeTab === 'charts' && chartStyle === 'south' ? '' : ''}`} // Styling tweak needed? No just basic
-                                                onClick={() => setChartStyle('south')}
-                                                style={{ padding: '6px 12px', borderRadius: '4px', border: chartStyle === 'south' ? '2px solid var(--primary-purple)' : '1px solid #ccc', background: chartStyle === 'south' ? '#F3E8FF' : 'white', cursor: 'pointer', fontWeight: 'bold' }}
-                                            >
-                                                South Indian
-                                            </button>
-                                            <button
-                                                onClick={() => setChartStyle('north')}
-                                                style={{ padding: '6px 12px', borderRadius: '4px', border: chartStyle === 'north' ? '2px solid var(--primary-purple)' : '1px solid #ccc', background: chartStyle === 'north' ? '#F3E8FF' : 'white', cursor: 'pointer', fontWeight: 'bold' }}
-                                            >
-                                                North Indian
-                                            </button>
-                                            {/* Divisionals Toggle */}
-                                            <button
-                                                onClick={() => setDivisionalMode(!divisionalMode)}
-                                                style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: '4px', background: divisionalMode ? 'var(--primary-purple)' : '#eee', color: divisionalMode ? 'white' : '#333', border: 'none', cursor: 'pointer' }}
-                                            >
-                                                {divisionalMode ? 'Show Rashi' : 'Show Vargas'}
-                                            </button>
+                                    <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
+                                        {/* Chart Visualization */}
+                                        <div className="space-y-4">
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setChartStyle('south')}
+                                                    className={chartStyle === 'south' ? 'bg-cosmic-nebula text-white' : 'text-muted-foreground'}
+                                                >
+                                                    South Indian
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setChartStyle('north')}
+                                                    className={chartStyle === 'north' ? 'bg-cosmic-nebula text-white' : 'text-muted-foreground'}
+                                                >
+                                                    North Indian
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setDivisionalMode(!divisionalMode)}
+                                                    className={`ml-auto ${divisionalMode ? 'bg-cosmic-starlight text-black' : 'text-muted-foreground'}`}
+                                                >
+                                                    {divisionalMode ? 'Show Rashi' : 'Show Vargas'}
+                                                </Button>
+                                            </div>
+
+                                            <Card className="glass-panel overflow-hidden border-border bg-card/40 p-4 aspect-square flex items-center justify-center relative">
+                                                {chartData ? (
+                                                    !divisionalMode ? (
+                                                        chartStyle === 'south' ? (
+                                                            <SouthIndianChart planets={chartData.planets} ascendantSign={chartData.ascendant_sign} />
+                                                        ) : (
+                                                            <NorthIndianChart planets={chartData.planets} houses={chartData.houses} />
+                                                        )
+                                                    ) : (
+                                                        <DivisionalChartsTab chartData={chartData} />
+                                                    )
+                                                ) : (
+                                                    <div className="text-center text-muted-foreground p-10">
+                                                        <div className="text-4xl mb-4 opacity-50">🌌</div>
+                                                        <p>Enter birth details to generate chart</p>
+                                                    </div>
+                                                )}
+                                            </Card>
                                         </div>
 
-                                        {chartData ? (
-                                            !divisionalMode ? (
-                                                chartStyle === 'south' ? (
-                                                    <SouthIndianChart planets={chartData.planets} ascendantSign={chartData.ascendant_sign} />
-                                                ) : (
-                                                    <NorthIndianChart planets={chartData.planets} houses={chartData.houses} />
-                                                )
+                                        {/* Planetary Table */}
+                                        <Card className="glass-panel h-full bg-card/40">
+                                            {chartData ? (
+                                                <PlanetaryTable
+                                                    planets={chartData.planets}
+                                                    ascendant={{
+                                                        sign: chartData.ascendant_sign,
+                                                        degree: chartData.ascendant,
+                                                        house: 1
+                                                    }}
+                                                />
                                             ) : (
-                                                <DivisionalChartsTab chartData={chartData} />
-                                            )
-                                        ) : (
-                                            <div className="panel" style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-                                                Chart will appear here
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Planets Side */}
-                                    <div>
-                                        {chartData ? (
-                                            <PlanetaryTable
-                                                planets={chartData.planets}
-                                                ascendant={{
-                                                    sign: chartData.ascendant_sign,
-                                                    degree: chartData.ascendant,
-                                                    house: 1
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="panel" style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-                                                Planetary details will appear here
-                                            </div>
-                                        )}
+                                                <div className="flex items-center justify-center h-full text-muted-foreground p-10">
+                                                    Planetary details waiting...
+                                                </div>
+                                            )}
+                                        </Card>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </TabsContent>
 
                         {/* TAB 2: PANCHANGA */}
-                        {activeTab === 'panchanga' && (
-                            <div>
-                                {chartData?.panchanga && currentDetails ? (
-                                    <PanchangaPanel
-                                        data={chartData.panchanga}
-                                        dashas={chartData.dashas}
-                                        birthDate={currentDetails.date}
-                                    />
-                                ) : (
-                                    <div className="panel" style={{ padding: '40px', textAlign: 'center' }}>
-                                        {chartData ? 'Loading Panchanga...' : 'Please calculate chart first.'}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <TabsContent value="panchanga" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'panchanga' && (
+                                <Card className="glass-panel border-white/10 bg-black/40">
+                                    {chartData?.panchanga && currentDetails ? (
+                                        <PanchangaPanel
+                                            data={chartData.panchanga}
+                                            dashas={chartData.dashas}
+                                            birthDate={currentDetails.date}
+                                        />
+                                    ) : (
+                                        <div className="p-10 text-center text-muted-foreground">Calculate chart first</div>
+                                    )}
+                                </Card>
+                            )}
+                        </TabsContent>
 
                         {/* TAB 3: DASHAS */}
-                        {activeTab === 'dashas' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                                {chartData && currentDetails ? (
-                                    <>
-                                        <DashaTable dashas={chartData.dashas} birthDate={currentDetails.date} />
-                                        {chartData.strengths && (
-                                            <StrengthBar strengths={chartData.strengths} />
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="panel" style={{ padding: '40px', textAlign: 'center' }}>
-                                        Please calculate chart first.
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* TAB 4: AI MENTOR */}
-                        {activeTab === 'mentor' && (
-                            <div>
-                                {insightsLoading ? (
-                                    <div className="panel" style={{ padding: '40px', textAlign: 'center' }}>
-                                        <div className="spinner"></div> Generating Insights...
-                                    </div>
-                                ) : (
-                                    coreInsights || prediction || dosha ? (
-                                        <div className="mentor-grid">
-                                            {/* Daily Forecast */}
-                                            {prediction && (
-                                                <div className="mentor-card forecast">
-                                                    <img src="/images/misc/icon-forecast.png" alt="Forecast" className="mentor-card-icon-img" style={{ width: '64px', height: '64px', marginBottom: '8px' }} />
-                                                    <div className="mentor-card-title">Daily Forecast</div>
-                                                    <div className="mentor-card-content">{prediction}</div>
-                                                </div>
+                        <TabsContent value="dashas" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'dashas' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {chartData && currentDetails ? (
+                                        <>
+                                            <Card className="glass-panel p-4 bg-black/40">
+                                                <DashaTable dashas={chartData.dashas} birthDate={currentDetails.date} />
+                                            </Card>
+                                            {chartData.strengths && (
+                                                <Card className="glass-panel p-4 bg-black/40">
+                                                    <StrengthBar strengths={chartData.strengths} />
+                                                </Card>
                                             )}
+                                        </>
+                                    ) : (
+                                        <div className="col-span-2 p-10 text-center text-muted-foreground glass-panel rounded-xl">Calculate chart first</div>
+                                    )}
+                                </div>
+                            )}
+                        </TabsContent>
 
-                                            {/* Dosha */}
-                                            {dosha && (
-                                                <div className="mentor-card dos">
-                                                    <div className="mentor-card-icon" style={{ fontSize: '40px' }}>🌿</div>
-                                                    <div className="mentor-card-title">Dosha Analysis</div>
-                                                    <div className="mentor-card-content">
-                                                        Primary: <strong>{dosha.primary}</strong><br />
-                                                        {dosha.description}
-                                                    </div>
-                                                </div>
-                                            )}
+                        {/* TAB 4: TRANSITS */}
+                        <TabsContent value="transits" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'transits' && (
+                                <Card className="glass-panel p-6 bg-card/40">
+                                    <TransitsTab />
+                                </Card>
+                            )}
+                        </TabsContent>
 
-                                            {/* Core Insights */}
-                                            {coreInsights && (
-                                                <>
-                                                    <div className="mentor-card personal">
-                                                        <img src="/images/misc/icon-personal.png" alt="Personal" className="mentor-card-icon-img" style={{ width: '64px', height: '64px', marginBottom: '8px' }} />
-                                                        <div className="mentor-card-title">Personality</div>
-                                                        <div className="mentor-card-content">{coreInsights.personal}</div>
-                                                    </div>
-                                                    <div className="mentor-card career">
-                                                        <img src="/images/misc/icon-career.png" alt="Career" className="mentor-card-icon-img" style={{ width: '64px', height: '64px', marginBottom: '8px' }} />
-                                                        <div className="mentor-card-title">Career & Purpose</div>
-                                                        <div className="mentor-card-content">{coreInsights.career}</div>
-                                                    </div>
-                                                    <div className="mentor-card relationships">
-                                                        <img src="/images/misc/icon-love.png" alt="Relationships" className="mentor-card-icon-img" style={{ width: '64px', height: '64px', marginBottom: '8px' }} />
-                                                        <div className="mentor-card-title">Relationships</div>
-                                                        <div className="mentor-card-content">{coreInsights.relationships}</div>
-                                                    </div>
-                                                    <div className="mentor-card" style={{ borderColor: '#E5E7EB' }}>
-                                                        <img src="/images/misc/icon-dos-donts.png" alt="Dos and Donts" className="mentor-card-icon-img" style={{ width: '64px', height: '64px', marginBottom: '8px' }} />
-                                                        <div className="mentor-card-title">Dos & Don'ts</div>
-                                                        <div className="mentor-card-content">{coreInsights.dos_donts}</div>
-                                                    </div>
-                                                </>
-                                            )}
+                        {/* TAB 5: MENTOR */}
+                        <TabsContent value="mentor" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'mentor' && (
+                                <div className="min-h-[400px]">
+                                    {insightsLoading ? (
+                                        <div className="flex flex-col items-center justify-center p-20 text-cosmic-nebula">
+                                            <div className="animate-spin text-4xl mb-4">🔮</div>
+                                            <p>Consulting the stars...</p>
                                         </div>
                                     ) : (
-                                        <div className="panel" style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-                                            <img src="/images/misc/zodiac-wheel.png" alt="Zodiac Wheel" style={{ width: '150px', opacity: 0.5, marginBottom: '20px' }} />
-                                            <div style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Unlock Your Cosmic Blueprint</div>
-                                            Calculate a chart to receive AI insights.
-                                        </div>
-                                    )
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                        coreInsights || prediction || dosha ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                                {/* Daily Forecast */}
+                                                {prediction && (
+                                                    <Card className="glass-panel border-l-4 border-l-cosmic-starlight bg-black/40">
+                                                        <CardContent className="p-6">
+                                                            <div className="flex items-center gap-3 mb-4">
+                                                                <div className="p-3 rounded-full bg-cosmic-starlight/10 text-2xl">☀️</div>
+                                                                <h3 className="font-bold text-lg text-cosmic-starlight">Daily Forecast</h3>
+                                                            </div>
+                                                            <p className="text-gray-300 leading-relaxed">{prediction}</p>
+                                                        </CardContent>
+                                                    </Card>
+                                                )}
+
+                                                {/* Dosha */}
+                                                {dosha && (
+                                                    <Card className="glass-panel border-l-4 border-l-red-500 bg-black/40">
+                                                        <CardContent className="p-6">
+                                                            <div className="flex items-center gap-3 mb-4">
+                                                                <div className="p-3 rounded-full bg-red-500/10 text-2xl">🔥</div>
+                                                                <h3 className="font-bold text-lg text-red-400">Dosha Analysis</h3>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <p className="font-semibold text-white">{dosha.primary}</p>
+                                                                <p className="text-gray-400 text-sm">{dosha.description}</p>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                )}
+
+                                                {/* Core Insights */}
+                                                {coreInsights && (
+                                                    <>
+                                                        <Card className="glass-panel bg-black/40">
+                                                            <CardContent className="p-6">
+                                                                <h3 className="font-bold text-lg text-cosmic-nebula mb-2">Personality</h3>
+                                                                <p className="text-gray-300 text-sm">{coreInsights.personal}</p>
+                                                            </CardContent>
+                                                        </Card>
+                                                        <Card className="glass-panel bg-black/40">
+                                                            <CardContent className="p-6">
+                                                                <h3 className="font-bold text-lg text-blue-400 mb-2">Career & Purpose</h3>
+                                                                <p className="text-gray-300 text-sm">{coreInsights.career}</p>
+                                                            </CardContent>
+                                                        </Card>
+                                                        <Card className="glass-panel bg-black/40">
+                                                            <CardContent className="p-6">
+                                                                <h3 className="font-bold text-lg text-pink-400 mb-2">Relationships</h3>
+                                                                <p className="text-gray-300 text-sm">{coreInsights.relationships}</p>
+                                                            </CardContent>
+                                                        </Card>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center p-20 text-muted-foreground glass-panel rounded-xl">
+                                                <div className="text-6xl mb-6 opacity-20">🤖</div>
+                                                <h3 className="text-xl font-bold mb-2">Unlock Your Cosmic Blueprint</h3>
+                                                <p>Calculate a chart to receive AI personalized insights.</p>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </main>
             </div>
 
             {/* Library Modal */}
             {showLibrary && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-2xl bg-card border border-white/10 rounded-xl shadow-2xl relative overflow-hidden">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowLibrary(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                        >
+                            ✕
+                        </Button>
                         <ChartLibrary
                             onLoad={(details) => {
                                 setShowLibrary(false);

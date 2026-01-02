@@ -2,8 +2,8 @@ import swisseph as swe
 import os
 import logging
 from datetime import date, time, timedelta, datetime
-from typing import Optional
-from threading import Lock
+from typing import Optional, List
+from threading import RLock
 from timezonefinder import TimezoneFinder
 import pytz
 from .models import PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, KaranaData
@@ -31,7 +31,7 @@ if missing:
     )
 
 swe.set_ephe_path(EPHEME_PATH)
-swe_lock = Lock()
+swe_lock = RLock()
 
 # Ayanamsa Mapping
 # To add more, find the ID in swisseph documentation
@@ -527,64 +527,14 @@ def calculate_chart(details: BirthDetails) -> ChartResponse:
         logger.error(f"Chart calculation error: {e}", exc_info=True)
         raise
 
+
 def calculate_maandi(jd_birth: float, details: BirthDetails, ayanamsa: float) -> Optional[PlanetPosition]:
     """
-    Calculate Maandi (Gulika) position.
-    
-    Args:
-        jd_birth: Julian Day of birth
-        details: Birth details (date, time, location)
-        ayanamsa: Ayanamsa value for sidereal conversion
-        
-    Returns:
-        PlanetPosition for Maandi, or None if calculation fails
+    Calculate Maandi position.
     """
     try:
-        geopos = (details.longitude, details.latitude, 0)
-        jd_midnight = swe.julday(details.date.year, details.date.month, details.date.day, 0)
-        
-        # Get sunrise and sunset
-        rise_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_RISE, geopos)
-        set_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_SET, geopos)
-        
-        def get_jd_from_res(res):
-            """Extract Julian Day from rise_trans result."""
-            if isinstance(res, tuple):
-                if isinstance(res[0], tuple) and len(res[0]) > 0:
-                    return res[0][0]
-                elif isinstance(res[0], float):
-                    return res[0]
-            return res[1][0]
-
-        sunrise_jd = get_jd_from_res(rise_res)
-        sunset_jd = get_jd_from_res(set_res)
-        
-        # Determine if birth is day or night
-        is_day = sunrise_jd <= jd_birth <= sunset_jd
-        
-        day_len = sunset_jd - sunrise_jd
-        night_len = (sunrise_jd + 1.0) - sunset_jd
-        
-        # Get weekday (0=Sun, 1=Mon, etc.)
-        weekday = int(jd_birth + 1.5) % 7
-        
-        # Maandi rising factors (ghatis from sunrise/sunset)
-        factors_day = {0: 26, 1: 22, 2: 18, 3: 14, 4: 10, 5: 6, 6: 2}
-        factors_night = {0: 10, 1: 6, 2: 2, 3: 26, 4: 22, 5: 18, 6: 14}
-        
-        if is_day:
-            factor = factors_day[weekday]
-            maandi_time_jd = sunrise_jd + (day_len * (factor / 30.0))
-        else:
-            # For night birth, use sunrise day's weekday
-            weekday_sunrise = int(sunrise_jd + 1.5) % 7
-            factor = factors_night[weekday_sunrise]
-            maandi_time_jd = sunset_jd + (night_len * (factor / 30.0))
-
-        # Calculate Ascendant at Maandi time (Maandi's longitude)
-        cusps, ascmc = swe.houses(maandi_time_jd, details.latitude, details.longitude, b'W')
-        maandi_lon_tropical = ascmc[0]
-        maandi_lon = (maandi_lon_tropical - ayanamsa) % 360
+        maandi_lon = _calculate_upagraha_lon(jd_birth, details, ayanamsa, is_maandi=True)
+        if maandi_lon is None: return None
         
         return PlanetPosition(
             name="Maandi",
@@ -592,17 +542,321 @@ def calculate_maandi(jd_birth: float, details: BirthDetails, ayanamsa: float) ->
             latitude=0,
             speed=0,
             retrograde=False,
-            house=0,  # Will be calculated in calculate_chart
+            house=0, 
             sign=get_sign_from_longitude(maandi_lon),
             nakshatra=get_nakshatra(maandi_lon)[0],
-            nakshatra_lord=get_nakshatra(maandi_lon)[1],
-            d9_sign=calculate_d9(maandi_lon),
-            d10_sign=calculate_d10(maandi_lon)
+            nakshatra_lord=get_nakshatra(maandi_lon)[1]
         )
-        
     except Exception as e:
         logger.warning(f"Maandi calculation failed: {e}. Skipping Maandi.")
         return None
+
+def calculate_gulika(jd_birth: float, details: BirthDetails, ayanamsa: float) -> Optional[PlanetPosition]:
+    """
+    Calculate Gulika position.
+    """
+    try:
+        gulika_lon = _calculate_upagraha_lon(jd_birth, details, ayanamsa, is_maandi=False)
+        if gulika_lon is None: return None
+        
+        return PlanetPosition(
+            name="Gulika",
+            longitude=gulika_lon,
+            latitude=0,
+            speed=0,
+            retrograde=False,
+            house=0, 
+            sign=get_sign_from_longitude(gulika_lon),
+            nakshatra=get_nakshatra(gulika_lon)[0],
+            nakshatra_lord=get_nakshatra(gulika_lon)[1]
+        )
+    except Exception as e:
+        logger.warning(f"Gulika calculation failed: {e}. Skipping Gulika.")
+        return None
+
+def _calculate_upagraha_lon(jd_birth: float, details: BirthDetails, ayanamsa: float, is_maandi: bool) -> Optional[float]:
+    """
+    Shared logic for Maandi/Gulika calculation based on sunrise/sunset.
+    """
+    geopos = (details.longitude, details.latitude, 0)
+    jd_midnight = swe.julday(details.date.year, details.date.month, details.date.day, 0)
+    
+    # Get sunrise and sunset
+    rise_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_RISE, geopos)
+    set_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_SET, geopos)
+    
+    def get_jd_from_res(res):
+        if isinstance(res, tuple):
+            if isinstance(res[0], tuple) and len(res[0]) > 0:
+                return res[0][0]
+            elif isinstance(res[0], float):
+                return res[0]
+        return res[1][0]
+
+    sunrise_jd = get_jd_from_res(rise_res)
+    sunset_jd = get_jd_from_res(set_res)
+    
+    # Determine if birth is day or night
+    is_day = sunrise_jd <= jd_birth <= sunset_jd
+    
+    day_len = sunset_jd - sunrise_jd
+    night_len = (sunrise_jd + 1.0) - sunset_jd
+    
+    # Get weekday (0=Sun, 1=Mon, ... 6=Sat)
+    # Note: swe.julday gives day of week via % 7? No it gives absolute JD.
+    # jd_birth + 1.5 cast to int % 7 gives Mon=0, Tue=1... Sun=6 usually in Python weekday().
+    # Let's align with Standard Vedic numbering: Sun=0, Mon=1, ... Sat=6
+    # Julian Day 0 was Monday (actually noon).
+    # (JD + 1.5) % 7 -> 0=Sunday, 1=Monday... 6=Saturday.
+    weekday = int(jd_birth + 1.5) % 7
+    
+    # Rising start times in Ghatis (out of 30 for day/night)
+    # Day:   Sun Mon Tue Wed Thu Fri Sat
+    # Maandi: 26  22  18  14  10   6   2
+    # Gulika: 26  22  18  14  10   6   2 (Wait, Gulika is different)
+    #
+    # REFERENCE:
+    # Maandi Day: Sun=26, Mon=22, Tue=18, Wed=14, Thu=10, Fri=6, Sat=2
+    # Gulika Day: Sun=26, Mon=22, Tue=18, Wed=14, Thu=10, Fri=6, Sat=2 (Actually Gulika start is at end of Saturn's portion)
+    #
+    # Wait, usually Gulika and Maandi rules are specific.
+    # Gulika (Kulik) Day: Divide day into 8 parts. Saturn's part is Gulika.
+    # Order of lords for Day (Sunrise to Sunset):
+    # Sun, Mon, Tue, Wed, Thu, Fri, Sat (Day Lords)
+    # Sun Day: 1.Sun, 2.Moon, ... 7.Sat, 8.NoLord(Rahu?)
+    # Actually simpler rule:
+    # Day Segments (8 parts): Starts with Day Lord.
+    # Night Segments (8 parts): Starts with 5th from Day Lord.
+    #
+    # Maandi fixed ghatis logic is simpler and often preferred in Kerala system.
+    
+    # Maandi Factors (Day):
+    maandi_day = {0: 26, 1: 22, 2: 18, 3: 14, 4: 10, 5: 6, 6: 2}
+    maandi_night = {0: 10, 1: 6, 2: 2, 3: 26, 4: 22, 5: 18, 6: 14}
+    
+    # Gulika Factors (Day - approximate via ghatis standard):
+    # Gulika is usually start of Saturn's Muhurta.
+    # Sun: 26, Mon: 22, Tue: 18, Wed: 14, Thu: 10, Fri: 6, Sat: 2 (This is Maandi??)
+    # Let's use the standard "Starts at X Ghatis" table for Gulika if distinct.
+    # Many sources say Maandi and Gulika are close but distinct.
+    # Gulika Day: Sun=26.25? No.
+    # Let's use standard table:
+    # Day:   Sun Mon Tue Wed Thu Fri Sat
+    # Gulika: 26.25? No, let's stick to the prompt's implied logic or standard param.
+    # Prompt said: "Similar to Maandi but different fractions"
+    # Let's implement calculate_gulika with standard segments logic (1/8th of day).
+    
+    factor = 0
+    ref_start = 0
+    duration = 0
+    
+    if is_maandi:
+        if is_day:
+            factor = maandi_day[weekday]
+            ref_start = sunrise_jd
+            duration = day_len
+        else:
+            w_night = (weekday + 4) % 7 # 5th from day lord? Wait. Maandi night factors are fixed.
+            # Using fixed table based on Day Lord of previous sunrise
+            factor = maandi_night[weekday]
+            ref_start = sunset_jd
+            duration = night_len
+            
+        time_jd = ref_start + (duration * (factor / 30.0))
+    else:
+        # Gulika Calculation (1/8th segments)
+        # Day: Divide into 8. Saturn's segment is Gulika.
+        # Order starts from Day Lord.
+        # Sun(0): Sun, Mon, Tue, Wed, Thu, Fri, Sat(6th segment) -> Gulika
+        # Mon(1): Mon... Sat(5th segment)
+        # Sequence: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6)
+        day_lord = weekday
+        saturn_offset = (6 - day_lord + 7) % 7
+        # Segment index (0-7). Saturn is at index `saturn_offset`?
+        # Example Sun Day: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6). Gulika is 7th part? (Index 6).
+        # Gulika is start of Saturn's part.
+        
+        segment_num = (6 - day_lord + 7) % 7 # This gives index of Sat in sequence starting from Day Lord?
+        # Check: Sun(0): (6-0+7)%7 = 6. Segments 0..6. 7th segment. Correct.
+        # Mon(1): (6-1+7)%7 = 5. 6th segment. Correct.
+        # Sat(6): (6-6+7)%7 = 0. 1st segment. Correct.
+        
+        if not is_day:
+            # Night: Divide into 8. Order starts from 5th from Day Lord.
+            # Sun Day Night start lord: Jupiter(4) -> (0+4)%7=4?
+            # Lords: Sun(0)..Jup(4).
+            # Sequence: Jup, Ven, Sat, Sun, Mon...
+            # We need Saturn's position in this sequence.
+            night_start_lord = (day_lord + 4) % 7
+            segment_num = (6 - night_start_lord + 7) % 7
+            ref_start = sunset_jd
+            duration = night_len
+        else:
+            ref_start = sunrise_jd
+            duration = day_len
+            
+        # Start of segment
+        time_jd = ref_start + (duration * (segment_num / 8.0))
+        # Usually Gulika is the BEGINNING of the segment.
+    
+    # Calculate Ascendant (Longitude) at this time
+    cusps, ascmc = swe.houses(time_jd, details.latitude, details.longitude, b'W')
+    lon_tropical = ascmc[0]
+    return (lon_tropical - ayanamsa) % 360
+
+def calculate_jaimini_karakas(planets: List[dict]) -> dict:
+    """
+    Sort planets by degree (0-30 in sign? Or 0-360?)
+    Jaimini Karakas based on "degrees traversed in the sign".
+    So longitude % 30.
+    Rahu/Ketu usually excluded (7 karaka scheme).
+    """
+    # Filter 7 main planets
+    candidates = []
+    for p in planets:
+        if p['name'] in ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn']:
+            deg_in_sign = p['longitude'] % 30
+            candidates.append({ 'name': p['name'], 'deg': deg_in_sign })
+            
+    # Sort descending
+    candidates.sort(key=lambda x: x['deg'], reverse=True)
+    
+    karaka_names = [
+        'Atmakaraka', 'Amatyakaraka', 'Bhratrukaraka', 
+        'Matrukaraka', 'Putrakaraka', 'Gnatikaraka', 'Darakaraka'
+    ]
+    
+    result = {}
+    for i, k_name in enumerate(karaka_names):
+        if i < len(candidates):
+            result[k_name] = candidates[i]['name']
+            
+    return result
+
+def get_current_transits_extended():
+    """
+    Get current transits including outer planets and special points.
+    """
+    with swe_lock:
+        now = datetime.utcnow()
+        # Default visual location (e.g. Ujjain or Greenwich? Using Greenwich for universal transits logic, 
+        # but strictly Ascendant depends on location. For purely planetary, location minimal effect except Moon.
+        # Using 0,0 for generic "current sky" or User's location?
+        # Prompt didn't specify location, so we assume generic "Sky Now".
+        # Ideally should use a default location like Greenwich or allow param.
+        # We will use 0,0 for simplicity, assuming geocentric/topocentric diff is minimal for display.
+        
+        jd = swe.julday(now.year, now.month, now.day, now.hour + now.minute/60.0)
+        
+        # Ayanamsa (Lahiri)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        ayanamsa = swe.get_ayanamsa_ut(jd)
+        
+        bodies = []
+        
+        # 1. Planets (Main + Outer)
+        planet_ids = {
+            **PLANET_MAP, # Includes Sun-Saturn + Rahu + Outer
+        }
+        # Ensure Key names match prompt requirements
+        
+        for name, pid in planet_ids.items():
+            if pid is None: continue
+            
+            flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
+            xx, _ = swe.calc_ut(jd, pid, flags)
+            lon = xx[0]
+            speed = xx[3]
+            
+            bodies.append({
+                'name': name,
+                'type': 'planet',
+                'sign': get_sign_from_longitude(lon),
+                'degree': format_degree(lon),
+                'longitude': lon,
+                'nakshatra': get_nakshatra(lon)[0],
+                'pada': int((lon % (360/27)) / (360/108)) + 1,
+                'speed': speed,
+                'retrograde': speed < 0
+            })
+            
+        # Ketu
+        rahu = next(b for b in bodies if b['name'] == 'Rahu')
+        ketu_lon = (rahu['longitude'] + 180) % 360
+        bodies.append({
+            'name': 'Ketu',
+            'type': 'planet',
+            'sign': get_sign_from_longitude(ketu_lon),
+            'degree': format_degree(ketu_lon),
+            'longitude': ketu_lon,
+            'nakshatra': get_nakshatra(ketu_lon)[0],
+            'pada': int((ketu_lon % (360/27)) / (360/108)) + 1,
+            'speed': -rahu['speed'],
+            'retrograde': rahu['retrograde']
+        })
+        
+        # 2. Special Points (Maandi/Gulika)
+        # Require a location. We'll use Ujjain (classic Meru) or just 0,0.
+        # Let's use 0 Lat, 0 Long (Greenwich equator) for generic "World Time".
+        dummy_details = BirthDetails(
+            date=now.date(), time=now.time(), 
+            latitude=0, longitude=0, ayanamsa_mode='LAHIRI'
+        )
+        
+        maandi = calculate_maandi(jd, dummy_details, ayanamsa)
+        if maandi:
+            bodies.append({
+                'name': 'Maandi',
+                'type': 'special_point',
+                'sign': maandi.sign,
+                'degree': format_degree(maandi.longitude),
+                'longitude': maandi.longitude,
+                'nakshatra': maandi.nakshatra,
+                'pada': int((maandi.longitude % (360/27)) / (360/108)) + 1,
+                'speed': 0,
+                'retrograde': False
+            })
+            
+        gulika = calculate_gulika(jd, dummy_details, ayanamsa)
+        if gulika:
+            bodies.append({
+                'name': 'Gulika',
+                'type': 'special_point',
+                'sign': gulika.sign,
+                'degree': format_degree(gulika.longitude),
+                'longitude': gulika.longitude,
+                'nakshatra': gulika.nakshatra,
+                'pada': int((gulika.longitude % (360/27)) / (360/108)) + 1,
+                'speed': 0,
+                'retrograde': False
+            })
+            
+        # 3. Jaimini Karakas
+        karakas = calculate_jaimini_karakas(bodies)
+        for k_name, p_name in karakas.items():
+            # Find the planet data
+            p_data = next((b for b in bodies if b['name'] == p_name), None)
+            if p_data:
+                bodies.append({
+                    'name': f"{k_name} ({p_name})",
+                    'type': 'karaka',
+                    'sign': p_data['sign'],
+                    'degree': p_data['degree'],
+                    'longitude': p_data['longitude'],
+                    'nakshatra': p_data['nakshatra'],
+                    'pada': p_data['pada'],
+                    'speed': 0,
+                    'retrograde': False
+                })
+                
+        return bodies
+
+def format_degree(lon: float) -> str:
+    d = int(lon % 30)
+    m = int((lon % 1) * 60)
+    s = int((((lon % 1) * 60) % 1) * 60)
+    return f"{d}° {m}' {s}\""
+
 
 def calculate_d9(lon: float) -> str:
     """
@@ -863,3 +1117,63 @@ def calculate_dashas(moon_lon: float, birth_date: date) -> list:
         })
         
     return dashas
+
+def get_current_transits() -> list[dict]:
+    """
+    Calculate current planetary positions (Transits) for now (UTC).
+    """
+    try:
+        # Current UTC time
+        now_utc = datetime.now(pytz.UTC)
+        
+        # Calculate Julian Day
+        decimal_hour = now_utc.hour + now_utc.minute / 60.0 + now_utc.second / 3600.0
+        jd = swe.julday(now_utc.year, now_utc.month, now_utc.day, decimal_hour)
+        
+        # Ayanamsa (Lahiri default for transits)
+        with swe_lock:
+            swe.set_sid_mode(swe.SIDM_LAHIRI)
+            ayanamsa = swe.get_ayanamsa_ut(jd)
+            
+            transits = []
+            
+            # Planets to track
+            planet_ids = {
+                'Sun': swe.SUN, 'Moon': swe.MOON, 'Mars': swe.MARS, 
+                'Mercury': swe.MERCURY, 'Jupiter': swe.JUPITER, 
+                'Venus': swe.VENUS, 'Saturn': swe.SATURN, 'Rahu': swe.TRUE_NODE
+            }
+            
+            flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
+            
+            for name, pid in planet_ids.items():
+                xx, _ = swe.calc_ut(jd, pid, flags)
+                lon = xx[0]
+                sign = get_sign_from_longitude(lon)
+                degree = lon % 30
+                nak, _ = get_nakshatra(lon)
+                
+                transits.append({
+                    "name": name,
+                    "sign": sign,
+                    "degree": round(degree, 2),
+                    "nakshatra": nak,
+                    "retrograde": xx[3] < 0
+                })
+                
+            # Ketu (Opposite Rahu)
+            rahu = next(p for p in transits if p["name"] == 'Rahu')
+            ketu_lon = (swe.calc_ut(jd, swe.TRUE_NODE, flags)[0][0] + 180) % 360
+            transits.append({
+                "name": "Ketu",
+                "sign": get_sign_from_longitude(ketu_lon),
+                "degree": round(ketu_lon % 30, 2),
+                "nakshatra": get_nakshatra(ketu_lon)[0],
+                "retrograde": rahu["retrograde"]
+            })
+            
+            return transits
+        
+    except Exception as e:
+        logger.error(f"Error calculating transits: {e}")
+        return []

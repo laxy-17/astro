@@ -38,19 +38,9 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
     };
 
     return (
-        <div className="panel" style={{ minHeight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#F9F7FF', padding: '16px' }}>
-            <div className="panel-header" style={{ width: '100%', marginBottom: '16px', background: '#7C3AED' }}>Rashi (D-1)</div>
-            <div style={{ padding: '0', width: '100%', maxWidth: '400px', aspectRatio: '1/1', display: 'flex', justifyContent: 'center' }}>
-                <div style={{
-                    display: 'grid',
-                    width: '100%',
-                    height: '100%',
-                    gridTemplateColumns: '1fr 1fr 1fr 1fr',
-                    gridTemplateRows: '1fr 1fr 1fr 1fr',
-                    gap: '2px',
-                    background: '#7C3AED', // Grid lines color
-                    border: '2px solid #7C3AED'
-                }}>
+        <div className="w-full h-full flex flex-col items-center bg-transparent">
+            <div className="w-full h-full relative aspect-square">
+                <div className="grid w-full h-full grid-cols-4 grid-rows-4 gap-[2px] bg-neutral-300 dark:bg-white/10 border-2 border-neutral-300 dark:border-white/10">
                     {/* Pisces (0,0) */}
                     <ChartBox sign="Pisces" planets={getPlanetsInSign("Pisces")} />
                     {/* Aries (0,1) */}
@@ -63,10 +53,10 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
                     {/* Aquarius (1,0) */}
                     <ChartBox sign="Aquarius" planets={getPlanetsInSign("Aquarius")} />
                     {/* Center Space (1,1 span 2x2) */}
-                    <div style={{ gridColumn: '2 / 4', gridRow: '2 / 4', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ gridColumn: '2 / 4', gridRow: '2 / 4', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#7C3AED' }}>South Indian</div>
-                            <div style={{ fontSize: '0.8rem', color: '#999' }}>Rashi Chakra</div>
+                            <div className="text-lg font-bold text-primary">South Indian</div>
+                            <div className="text-sm text-muted-foreground">Rashi Chakra</div>
                         </div>
                     </div>
                     {/* Cancer (1,3) */}
@@ -97,48 +87,20 @@ const ChartBox: React.FC<{ sign: string, planets: string[] }> = ({ sign, planets
     const isAscendant = planets.includes('ASC');
 
     return (
-        <div style={{
-            background: isAscendant ? '#FEF2F2' : 'white', // Highlight ASC box
-            padding: '4px',
-            fontSize: '0.8rem',
-            position: 'relative',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '4px',
-            alignContent: 'start',
-            overflow: 'hidden'
-        }}>
+        <div className={`p-1 relative flex flex-wrap gap-1 content-start overflow-hidden ${isAscendant ? 'bg-red-500/10' : 'bg-card'}`}>
             {/* Ascendant Marker Border */}
             {isAscendant && (
-                <div style={{
-                    position: 'absolute',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    border: '2px dashed #EF4444',
-                    opacity: 0.5,
-                    pointerEvents: 'none'
-                }} />
+                <div className="absolute inset-0 border-2 border-dashed border-red-500/50 pointer-events-none" />
             )}
 
             {/* Sign Label */}
-            <div style={{
-                position: 'absolute',
-                bottom: '2px',
-                right: '4px',
-                fontSize: '0.65rem',
-                color: '#999',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-            }}>
+            <div className="absolute bottom-0.5 right-1 text-[0.6rem] text-muted-foreground uppercase tracking-wider">
                 {sign}
             </div>
 
             {/* Planets */}
             {planets.map(p => (
-                <span key={p} style={{
-                    fontWeight: '600',
-                    color: p === 'ASC' ? '#EF4444' : '#1F2937',
-                    fontSize: '0.85rem'
-                }}>
+                <span key={p} className={`text-xs font-bold ${p === 'ASC' ? 'text-red-500' : 'text-foreground'}`}>
                     {p}
                 </span>
             ))}
