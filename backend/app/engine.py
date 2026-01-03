@@ -1,14 +1,92 @@
 import swisseph as swe
 import os
 import logging
-from datetime import date, time, timedelta, datetime
-from typing import Optional, List
+from datetime import date, time, timedelta, datetime, timezone
+from typing import Optional, List, Tuple, Dict
 from threading import RLock
 from timezonefinder import TimezoneFinder
 import pytz
 from .models import PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, KaranaData
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# TIMEZONE & TIME HELPER FUNCTIONS
+# ============================================================================
+
+def get_timezone_offset(timezone_name: str) -> timedelta:
+    """Get UTC offset for a timezone name."""
+    try:
+        tz = pytz.timezone(timezone_name)
+        now = datetime.now()
+        localized = tz.localize(now)
+        offset = localized.utcoffset()
+        return offset
+    except Exception as e:
+        logger.warning(f"Could not get timezone offset for {timezone_name}: {e}")
+        # Fallback for common timezones
+        offsets = {
+            "Asia/Kolkata": timedelta(hours=5, minutes=30),
+            "America/New_York": timedelta(hours=-5),
+            "Europe/London": timedelta(hours=0),
+        }
+        return offsets.get(timezone_name, timedelta(0))
+
+def convert_to_utc(date_obj: date, time_obj: time, location_timezone: str) -> Tuple[datetime, str]:
+    """Convert local birth time to UTC."""
+    try:
+        # Create naive datetime
+        birth_local_naive = datetime.combine(date_obj, time_obj)
+        
+        # Localize
+        try:
+            local_tz = pytz.timezone(location_timezone)
+        except:
+            local_tz = pytz.timezone('UTC') # Fallback
+            
+        birth_local = local_tz.localize(birth_local_naive)
+        
+        # Convert to UTC
+        birth_utc = birth_local.astimezone(timezone.utc)
+        
+        debug_str = (
+            f"Time conversion: {birth_local_naive} {location_timezone} "
+            f"-> {birth_utc.isoformat()} UTC"
+        )
+        logger.info(debug_str)
+        return birth_utc, debug_str
+    except Exception as e:
+        logger.error(f"Timezone conversion error: {e}")
+        raise
+
+def jd_to_time(jd: float) -> str:
+    """Convert Julian Day to human-readable UTC time string."""
+    year, month, day, hour = swe.revjul(jd)
+    minute = int((hour % 1) * 60)
+    hour_int = int(hour)
+    second = int(((hour % 1) * 60 % 1) * 60)
+    return f"{hour_int:02d}:{minute:02d}:{second:02d} UTC {year}-{month:02d}-{day:02d}"
+
+def convert_utc_to_local(utc_time_str: str, timezone_name: str) -> str:
+    """Convert UTC time string (debug format) to local timezone."""
+    try:
+        # Expected format from jd_to_time: "HH:MM:SS UTC YYYY-MM-DD"
+        parts = utc_time_str.split(' UTC ')
+        time_part = parts[0]
+        date_part = parts[1]
+        
+        h, m, s = map(int, time_part.split(':'))
+        y, mo, d = map(int, date_part.split('-'))
+        
+        utc_dt = datetime(y, mo, d, h, m, s, tzinfo=timezone.utc)
+        
+        local_tz = pytz.timezone(timezone_name)
+        local_dt = utc_dt.astimezone(local_tz)
+        
+        return local_dt.strftime("%I:%M %p %Y-%m-%d")
+    except Exception as e:
+        logger.warning(f"Could not convert to local time: {e}")
+        return utc_time_str
 
 # Initialize Swiss Ephemeris
 EPHEME_PATH = os.getenv("EPHEME_PATH", "/app/ephemeris")
@@ -305,211 +383,256 @@ def get_nakshatra(lon: float) -> tuple[str, str]:
     
     return nak_name, lord
 
+# ============================================================================
+# CHART CALCULATION
+# ============================================================================
+
 def calculate_chart(details: BirthDetails) -> ChartResponse:
-    """
-    Calculate complete birth chart from birth details.
-    
-    Args:
-        details: Birth date, time, and location
-        
-    Returns:
-        ChartResponse with ascendant, planets, houses, and dashas
-        
-    Raises:
-        ValueError: If birth details are invalid
-        RuntimeError: If ephemeris files are missing
-    """
+    """Calculate complete birth chart with proper timezone handling."""
     try:
-        # Acquire lock for thread safety with Swisseph global state
+        # Acquire lock for thread safety
         with swe_lock:
-            # Set Ayanamsa Mode
             mode_name = details.ayanamsa_mode
             sid_mode = AYANAMSA_MAP.get(mode_name, swe.SIDM_LAHIRI)
-            
             is_tropical = mode_name == 'SAYANA'
             
-            if is_tropical:
-                # For Sayana (Tropical), we don't subtract ayanamsa.
-                # swisseph defaults to Tropical if no FLG_SIDEREAL is passed usually.
-                # However, if we want to be explicit, we can just ensure we don't use FLG_SIDEREAL.
-                pass
-            else:
+            if not is_tropical:
                 swe.set_sid_mode(sid_mode)
-
-            # Validate input
+        
+        # Validate input
         if details.latitude < -90 or details.latitude > 90:
-            raise ValueError(f"Invalid latitude: {details.latitude}. Must be between -90 and 90.")
+            raise ValueError(f"Invalid latitude: {details.latitude}")
         if details.longitude < -180 or details.longitude > 180:
-            raise ValueError(f"Invalid longitude: {details.longitude}. Must be between -180 and 180.")
+            raise ValueError(f"Invalid longitude: {details.longitude}")
+            
+        # ────────────────────────────────────────────────────────────────
+        # TIMEZONE HANDLING (ROBUST)
+        # ────────────────────────────────────────────────────────────────
         
-        # Timezone Handling
-        # 1. Get timezone string from coordinates
-        tz_str = tf.timezone_at(lng=details.longitude, lat=details.latitude)
+        # 1. Determine Timezone if missing
+        tz_str = details.location_timezone
         if not tz_str:
-            # Fallback to UTC if timezone not found (shouldn't happen for valid coords)
-            logger.warning(f"Could not determine timezone for {details.latitude}, {details.longitude}. Assuming UTC.")
-            tz_str = 'UTC'
+            tz_str = tf.timezone_at(lng=details.longitude, lat=details.latitude) or 'UTC'
+            
+        # 2. Convert to UTC using helper
+        birth_utc, _ = convert_to_utc(details.date, details.time, tz_str)
         
-        # 2. Localize the input time
-        local_tz = pytz.timezone(tz_str)
-        # Combine date and time to naive datetime
-        naive_dt = datetime.combine(details.date, details.time)
-        # Localize
-        local_dt = local_tz.localize(naive_dt)
+        # 3. Calculate Julian Day (UT)
+        decimal_hour_utc = birth_utc.hour + birth_utc.minute / 60.0 + birth_utc.second / 3600.0
+        jd = swe.julday(birth_utc.year, birth_utc.month, birth_utc.day, decimal_hour_utc)
         
-        # 3. Convert to UTC
-        utc_dt = local_dt.astimezone(pytz.UTC)
-        
-        logger.info(f"Input Time: {naive_dt} ({tz_str}) -> UTC: {utc_dt}")
-
-        # 4. Use UTC time for Julian Day calculation
-        # swe.julday expects UT (Universal Time)
-        decimal_hour_utc = utc_dt.hour + utc_dt.minute / 60.0 + utc_dt.second / 3600.0
-        jd = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, decimal_hour_utc)
-        
+        # 4. Ayanamsa
         if is_tropical:
-            ayanamsa = 0.0 # No subtraction for Tropical
+            ayanamsa = 0.0
         else:
-            # Calculate Ayanamsa (precession offset)
             ayanamsa = swe.get_ayanamsa_ut(jd)
-            logger.info(f"Using Ayanamsa: {mode_name} ({sid_mode if not is_tropical else 'Tropical'}) = {ayanamsa}")
-
-        # Calculate Ascendant (tropical first, then convert to sidereal)
-        cusps_tropical, ascmc_tropical = swe.houses(jd, details.latitude, details.longitude, b'W') 
-        ascendant_tropical = ascmc_tropical[0]
+            logger.info(f"Ayanamsa: {ayanamsa}")
+            
+        # ────────────────────────────────────────────────────────────────
+        # PLANETARY CALCULATION
+        # ────────────────────────────────────────────────────────────────
         
-        # Convert to Sidereal
+        # Ascendant
+        cusps_trop, ascmc_trop = swe.houses(jd, details.latitude, details.longitude, b'W')
+        ascendant_tropical = ascmc_trop[0]
         ascendant_degree = (ascendant_tropical - ayanamsa) % 360
         ascendant_sign = get_sign_from_longitude(ascendant_degree)
         
-        asc_sign_index = int(ascendant_degree / 30) % 12
-        
-        # Calculate Houses (Whole Sign System)
+        # Houses
+        asc_sign_idx = int(ascendant_degree / 30) % 12
         houses = []
         for i in range(12):
-            house_num = i + 1
-            sign_index = (asc_sign_index + i) % 12
-            houses.append(House(
-                number=house_num, 
-                sign=SIGNS[sign_index],
-                ascendant_degree=ascendant_degree if house_num == 1 else None
-            ))
-
-        # Calculate Planets
+            h_num = i + 1
+            s_idx = (asc_sign_idx + i) % 12
+            houses.append(House(number=h_num, sign=SIGNS[s_idx], ascendant_degree=ascendant_degree if h_num==1 else None))
+            
+        # Planets
         planets = []
         for name, pid in PLANET_MAP.items():
-            flags = swe.FLG_SWIEPH | swe.FLG_SPEED
-            if not is_tropical:
-                flags |= swe.FLG_SIDEREAL
-                
-            xx, rflags = swe.calc_ut(jd, pid, flags)
+            flags = swe.FLG_SWIEPH | swe.FLG_SPEED | (swe.FLG_SIDEREAL if not is_tropical else 0)
+            xx, _ = swe.calc_ut(jd, pid, flags)
             lon = xx[0]
-            lat = xx[1]
+            lat_val = xx[1]
             speed = xx[3]
-            retro = speed < 0
             
             sign = get_sign_from_longitude(lon)
-            nak, nak_lord = get_nakshatra(lon)
+            nak, lord = get_nakshatra(lon)
             
-            # Calculate House (Whole Sign)
-            planet_sign_index = int(lon / 30) % 12
-            house_num = ((planet_sign_index - asc_sign_index + 12) % 12) + 1
+            p_sign_idx = int(lon / 30) % 12
+            house_num = ((p_sign_idx - asc_sign_idx + 12) % 12) + 1
             
             planets.append(PlanetPosition(
-                name=name,
-                longitude=lon,
-                latitude=lat,
-                speed=speed,
-                retrograde=retro,
-                house=house_num,
-                sign=sign,
-                nakshatra=nak,
-                nakshatra_lord=nak_lord
+                name=name, longitude=lon, latitude=lat_val, speed=speed,
+                retrograde=speed < 0, house=house_num, sign=sign,
+                nakshatra=nak, nakshatra_lord=lord
             ))
-        
-        # Calculate Ketu (always opposite Rahu)
+            
+        # Ketu
         rahu = next(p for p in planets if p.name == 'Rahu')
-        ketu_lon = (rahu.longitude + 180) % 360
-        ketu_sign = get_sign_from_longitude(ketu_lon)
-        ketu_nak, ketu_lord = get_nakshatra(ketu_lon)
-        ketu_house = ((int(ketu_lon / 30) - asc_sign_index + 12) % 12) + 1
+        k_lon = (rahu.longitude + 180) % 360
+        k_sign = get_sign_from_longitude(k_lon)
+        k_nak, k_lord = get_nakshatra(k_lon)
+        k_house = ((int(k_lon / 30) - asc_sign_idx + 12) % 12) + 1
         
         planets.append(PlanetPosition(
-            name='Ketu',
-            longitude=ketu_lon,
-            latitude=-rahu.latitude,
-            speed=-rahu.speed, 
-            retrograde=rahu.retrograde,
-            house=ketu_house,
-            sign=ketu_sign,
-            nakshatra=ketu_nak,
-            nakshatra_lord=ketu_lord
+            name='Ketu', longitude=k_lon, latitude=-rahu.latitude, speed=-rahu.speed,
+            retrograde=rahu.retrograde, house=k_house, sign=k_sign, nakshatra=k_nak, nakshatra_lord=k_lord
         ))
         
-        # Calculate Divisional Charts (D1-D60)
+        # ────────────────────────────────────────────────────────────────
+        # SUNRISE / SUNSET (For Mandhi & Verification)
+        # ────────────────────────────────────────────────────────────────
+        # ────────────────────────────────────────────────────────────────
+        # SUNRISE / SUNSET (For Mandhi & Verification)
+        # ────────────────────────────────────────────────────────────────
+        geopos = (details.longitude, details.latitude, 0)
+        
+        # Define UTC Midnight for reference
+        jd_midnight_utc = swe.julday(birth_utc.year, birth_utc.month, birth_utc.day, 0)
+        
+        # Start search from 24h before birth to catch sunrise if it happened just before UTC midnight
+        # But wait, jd_midnight_utc is 00:00 of the birth UTC date.
+        # Safest is to search relative to birth time? 
+        # But we need "Sunrise of that day".
+        # Let's search from (jd - 1) and find the one closest to (but before) birth?
+        # Or simpler: Start from jd_midnight_utc - 1.0. 
+        # Logic: Sunrise shouldn't be more than 24h away.
+        
+        search_start_jd = jd_midnight_utc - 1.0
+        
+        rise_res = swe.rise_trans(search_start_jd, swe.SUN, swe.CALC_RISE, geopos)
+        set_res = swe.rise_trans(search_start_jd, swe.SUN, swe.CALC_SET, geopos)
+        
+        # We need the sunrise/sunset PAIR that encloses (or is relevant to) the birth.
+        # If we found a sunrise/sunset at T-20h, and another at T+4h...
+        # We need the specific sunrise for the "Vedic Day".
+        # Definition: The sunrise strictly BEFORE birth (or if birth is before sunrise, the one before THAT).
+        # Actually Vedic day starts at Sunrise. 
+        # So we want the `sunrise_jd` such that `sunrise_jd <= jd < next_sunrise`.
+        
+        # Let's implement a robust finder
+        # 1. Find next sunrise after (jd - 2 days) to be safe?
+        # No, just find the sunrise immediately preceding (or equal to) jd.
+        
+        def find_prev_sunrise(target_jd, geo):
+            # Iterate backwards? No, swisseph finds next.
+            # Start 2 days back
+            t = target_jd - 2.0
+            last_rise = None
+            found_rise = None
+            for _ in range(4): # Check 4 sunrises
+                 res = swe.rise_trans(t, swe.SUN, swe.CALC_RISE, geo)
+                 r = res[1][0]
+                 if r > target_jd:
+                     break
+                 last_rise = r
+                 t = r + 0.1 # Move forward
+            return last_rise
+
+        # Actually simplest: swe.rise_trans(jd, ... swe.CALC_RISE | swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACT) ?
+        # Standard: Look from jd - 1.2 (approx 30h back).
+        
+        # Let's try finding the rise/set pair for the *Civil Day* of birth?
+        # Revert to standard robust algorithm:
+        # Search from jd_utc_midnight - 1.0.
+        # Pick the rise that is on the SAME DAY (Local) or just the one preceding birth?
+        # Mandhi requires the Day/Night of the "Vedic Day".
+        
+        # New Logic:
+        # 1. Find sunrise immediately preceding birth.
+        # 2. Find sunset following that sunrise.
+        # 3. If birth < sunset: Day Birth.
+        # 4. If birth > sunset: Night Birth.
+        
+        t_search = jd - 1.5
+        sunrise_jd = 0
+        while True:
+            rr = swe.rise_trans(t_search, swe.SUN, swe.CALC_RISE, geopos)
+            r_time = rr[1][0]
+            if r_time > jd:
+                # We overshot. The PREVIOUS one was the sunrise.
+                # If this is the first iteration, birth is before any sunrise we found?
+                # Start earlier.
+                break
+            sunrise_jd = r_time
+            t_search = r_time + 0.1 # Advance
+            
+        # If loop didn't run well (rare), fallback calculate from scratch
+        if sunrise_jd == 0:
+             # Fallback: Just calculate sunrise for the civil date
+             # (Previous implementation logic but offset)
+             # Let's try just searching from jd - 1.0 and taking the last one <= jd
+             rr = swe.rise_trans(jd - 1.1, swe.SUN, swe.CALC_RISE, geopos)
+             if rr[1][0] <= jd:
+                 sunrise_jd = rr[1][0]
+                 # Check if there is another one in betweeen?
+                 rr2 = swe.rise_trans(sunrise_jd + 0.01, swe.SUN, swe.CALC_RISE, geopos)
+                 if rr2[1][0] <= jd:
+                     sunrise_jd = rr2[1][0]
+             else:
+                 # This shouldn't happen if we start 1.1 days back
+                 sunrise_jd = rr[1][0] # Future sunrise? Error.
+                 
+        # Now find the sunset AFTER this sunrise (to define the day)
+        ss_res = swe.rise_trans(sunrise_jd, swe.SUN, swe.CALC_SET, geopos)
+        sunset_jd = ss_res[1][0]
+        
+        # Verification Strings
+        sr_utc = jd_to_time(sunrise_jd)
+        ss_utc = jd_to_time(sunset_jd)
+        sr_local = convert_utc_to_local(sr_utc, tz_str)
+        ss_local = convert_utc_to_local(ss_utc, tz_str)
+        
+        # ────────────────────────────────────────────────────────────────
+        # MANDHI
+        # ────────────────────────────────────────────────────────────────
+        mandhi_data, mandhi_debug_time = calculate_mandhi_enhanced(
+            jd, jd_midnight_utc, sunrise_jd, sunset_jd, 
+            geopos, ayanamsa, ascendant_degree
+        )
+        if mandhi_data:
+            # Calculate House for Mandhi relative to Ascendant
+            m_lon = mandhi_data.longitude
+            m_sign_idx = int(m_lon / 30) % 12
+            m_house = ((m_sign_idx - asc_sign_idx + 12) % 12) + 1
+            mandhi_data.house = m_house
+            planets.append(mandhi_data)
+        
+        # ────────────────────────────────────────────────────────────────
+        # VARGAS & OTHER CALCULATIONS
+        # ────────────────────────────────────────────────────────────────
+        
+        # Divisional Charts
         varga_nums = [1, 2, 3, 4, 7, 9, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60]
         divisional_charts = {}
-        
         for v_num in varga_nums:
             v_planets = []
-            
-            # Calculate Ascendant for this Varga
-            asc_sign = calculate_varga(ascendant_degree, v_num)
-            
-            # Calculate for all planets including Ketu
-            # Note: planets list includes Ketu which was appended earlier
+            asc_sign_v = calculate_varga(ascendant_degree, v_num)
             for p in planets:
-                p_lon = p.longitude
-                v_sign = calculate_varga(p_lon, v_num)
-                
-                # Determine house in this varga based on Ascendant
-                asc_idx = SIGNS.index(asc_sign)
-                sign_idx = SIGNS.index(v_sign)
-                house_num = ((sign_idx - asc_idx + 12) % 12) + 1
-                
-                v_planets.append(VargaPosition(
-                    planet=p.name,
-                    sign=v_sign,
-                    house=house_num
-                ))
+                v_sign = calculate_varga(p.longitude, v_num)
+                # House in Varga
+                a_idx = SIGNS.index(asc_sign_v)
+                s_idx = SIGNS.index(v_sign)
+                h_num = ((s_idx - a_idx + 12) % 12) + 1
+                v_planets.append(VargaPosition(planet=p.name, sign=v_sign, house=h_num))
             
-            divisional_charts[f"D{v_num}"] = VargaChart(
-                name=f"D{v_num}", 
-                planets=v_planets, 
-                ascendant_sign=asc_sign
-            )
+            divisional_charts[f"D{v_num}"] = VargaChart(name=f"D{v_num}", planets=v_planets, ascendant_sign=asc_sign_v)
             
-        # Update planets with D9/D10 specifically for backward compat (if needed)
-        # We can just set them from the computed vargas
+        # Update D9/D10 legacy fields
         for p in planets:
-            d9_chart = divisional_charts.get("D9")
-            if d9_chart:
-                 p_pos = next((vp for vp in d9_chart.planets if vp.planet == p.name), None)
-                 if p_pos: p.d9_sign = p_pos.sign
-            
-            d10_chart = divisional_charts.get("D10")
-            if d10_chart:
-                 p_pos = next((vp for vp in d10_chart.planets if vp.planet == p.name), None)
-                 if p_pos: p.d10_sign = p_pos.sign
+            if d9 := divisional_charts.get("D9"):
+                if found := next((vp for vp in d9.planets if vp.planet == p.name), None):
+                    p.d9_sign = found.sign
+            if d10 := divisional_charts.get("D10"):
+                if found := next((vp for vp in d10.planets if vp.planet == p.name), None):
+                    p.d10_sign = found.sign
 
-        # Calculate Maandi (optional, may fail gracefully)
-        maandi = calculate_maandi(jd, details, ayanamsa)
-        if maandi:
-            maandi_sign_index = int(maandi.longitude / 30) % 12
-            maandi.house = ((maandi_sign_index - asc_sign_index + 12) % 12) + 1
-            planets.append(maandi)
-            # Add Maandi to D-Charts? For now, skip adding to vargas to keep logic simple
-        
-        # Calculate Vimshottari Dasha
+        # Dashas, Panchanga, Strengths
         moon = next(p for p in planets if p.name == 'Moon')
-        dashas = calculate_dashas(moon.longitude, details.date)
-
-        # Calculate Panchanga
         sun = next(p for p in planets if p.name == 'Sun')
-        moon = next(p for p in planets if p.name == 'Moon')
+        
+        dashas = calculate_dashas(moon.longitude, details.date)
         panchanga = calculate_panchanga(moon.longitude, sun.longitude, jd, details)
-
-        # Calculate Strength
         strengths = calculate_vimsopaka_strength(divisional_charts)
 
         return ChartResponse(
@@ -520,189 +643,81 @@ def calculate_chart(details: BirthDetails) -> ChartResponse:
             dashas=dashas,
             panchanga=panchanga,
             strengths=strengths,
-            divisional_charts=divisional_charts
+            divisional_charts=divisional_charts,
+            sunrise_time=sr_local,
+            sunset_time=ss_local,
+            mandhi_time_local=convert_utc_to_local(mandhi_debug_time, tz_str) if mandhi_debug_time else None
         )
-        
+
     except Exception as e:
         logger.error(f"Chart calculation error: {e}", exc_info=True)
         raise
 
 
-def calculate_maandi(jd_birth: float, details: BirthDetails, ayanamsa: float) -> Optional[PlanetPosition]:
+def calculate_mandhi_enhanced(
+    jd_birth: float,
+    jd_midnight: float,
+    sunrise_jd: float,
+    sunset_jd: float,
+    geopos: Tuple[float, float, float],
+    ayanamsa: float,
+    ascendant_sidereal: float
+) -> Tuple[Optional[PlanetPosition], Optional[str]]:
     """
-    Calculate Maandi position.
-    """
-    try:
-        maandi_lon = _calculate_upagraha_lon(jd_birth, details, ayanamsa, is_maandi=True)
-        if maandi_lon is None: return None
-        
-        return PlanetPosition(
-            name="Maandi",
-            longitude=maandi_lon,
-            latitude=0,
-            speed=0,
-            retrograde=False,
-            house=0, 
-            sign=get_sign_from_longitude(maandi_lon),
-            nakshatra=get_nakshatra(maandi_lon)[0],
-            nakshatra_lord=get_nakshatra(maandi_lon)[1]
-        )
-    except Exception as e:
-        logger.warning(f"Maandi calculation failed: {e}. Skipping Maandi.")
-        return None
-
-def calculate_gulika(jd_birth: float, details: BirthDetails, ayanamsa: float) -> Optional[PlanetPosition]:
-    """
-    Calculate Gulika position.
+    Enhanced Mandhi calculation.
+    Returns (PlanetPosition, mandhi_time_utc_str)
     """
     try:
-        gulika_lon = _calculate_upagraha_lon(jd_birth, details, ayanamsa, is_maandi=False)
-        if gulika_lon is None: return None
+        is_day = sunrise_jd <= jd_birth <= sunset_jd
+        day_len = sunset_jd - sunrise_jd
+        night_len = (sunrise_jd + 1.0) - sunset_jd
         
-        return PlanetPosition(
-            name="Gulika",
-            longitude=gulika_lon,
-            latitude=0,
-            speed=0,
-            retrograde=False,
-            house=0, 
-            sign=get_sign_from_longitude(gulika_lon),
-            nakshatra=get_nakshatra(gulika_lon)[0],
-            nakshatra_lord=get_nakshatra(gulika_lon)[1]
-        )
-    except Exception as e:
-        logger.warning(f"Gulika calculation failed: {e}. Skipping Gulika.")
-        return None
-
-def _calculate_upagraha_lon(jd_birth: float, details: BirthDetails, ayanamsa: float, is_maandi: bool) -> Optional[float]:
-    """
-    Shared logic for Maandi/Gulika calculation based on sunrise/sunset.
-    """
-    geopos = (details.longitude, details.latitude, 0)
-    jd_midnight = swe.julday(details.date.year, details.date.month, details.date.day, 0)
-    
-    # Get sunrise and sunset
-    rise_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_RISE, geopos)
-    set_res = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_SET, geopos)
-    
-    def get_jd_from_res(res):
-        if isinstance(res, tuple):
-            if isinstance(res[0], tuple) and len(res[0]) > 0:
-                return res[0][0]
-            elif isinstance(res[0], float):
-                return res[0]
-        return res[1][0]
-
-    sunrise_jd = get_jd_from_res(rise_res)
-    sunset_jd = get_jd_from_res(set_res)
-    
-    # Determine if birth is day or night
-    is_day = sunrise_jd <= jd_birth <= sunset_jd
-    
-    day_len = sunset_jd - sunrise_jd
-    night_len = (sunrise_jd + 1.0) - sunset_jd
-    
-    # Get weekday (0=Sun, 1=Mon, ... 6=Sat)
-    # Note: swe.julday gives day of week via % 7? No it gives absolute JD.
-    # jd_birth + 1.5 cast to int % 7 gives Mon=0, Tue=1... Sun=6 usually in Python weekday().
-    # Let's align with Standard Vedic numbering: Sun=0, Mon=1, ... Sat=6
-    # Julian Day 0 was Monday (actually noon).
-    # (JD + 1.5) % 7 -> 0=Sunday, 1=Monday... 6=Saturday.
-    weekday = int(jd_birth + 1.5) % 7
-    
-    # Rising start times in Ghatis (out of 30 for day/night)
-    # Day:   Sun Mon Tue Wed Thu Fri Sat
-    # Maandi: 26  22  18  14  10   6   2
-    # Gulika: 26  22  18  14  10   6   2 (Wait, Gulika is different)
-    #
-    # REFERENCE:
-    # Maandi Day: Sun=26, Mon=22, Tue=18, Wed=14, Thu=10, Fri=6, Sat=2
-    # Gulika Day: Sun=26, Mon=22, Tue=18, Wed=14, Thu=10, Fri=6, Sat=2 (Actually Gulika start is at end of Saturn's portion)
-    #
-    # Wait, usually Gulika and Maandi rules are specific.
-    # Gulika (Kulik) Day: Divide day into 8 parts. Saturn's part is Gulika.
-    # Order of lords for Day (Sunrise to Sunset):
-    # Sun, Mon, Tue, Wed, Thu, Fri, Sat (Day Lords)
-    # Sun Day: 1.Sun, 2.Moon, ... 7.Sat, 8.NoLord(Rahu?)
-    # Actually simpler rule:
-    # Day Segments (8 parts): Starts with Day Lord.
-    # Night Segments (8 parts): Starts with 5th from Day Lord.
-    #
-    # Maandi fixed ghatis logic is simpler and often preferred in Kerala system.
-    
-    # Maandi Factors (Day):
-    maandi_day = {0: 26, 1: 22, 2: 18, 3: 14, 4: 10, 5: 6, 6: 2}
-    maandi_night = {0: 10, 1: 6, 2: 2, 3: 26, 4: 22, 5: 18, 6: 14}
-    
-    # Gulika Factors (Day - approximate via ghatis standard):
-    # Gulika is usually start of Saturn's Muhurta.
-    # Sun: 26, Mon: 22, Tue: 18, Wed: 14, Thu: 10, Fri: 6, Sat: 2 (This is Maandi??)
-    # Let's use the standard "Starts at X Ghatis" table for Gulika if distinct.
-    # Many sources say Maandi and Gulika are close but distinct.
-    # Gulika Day: Sun=26.25? No.
-    # Let's use standard table:
-    # Day:   Sun Mon Tue Wed Thu Fri Sat
-    # Gulika: 26.25? No, let's stick to the prompt's implied logic or standard param.
-    # Prompt said: "Similar to Maandi but different fractions"
-    # Let's implement calculate_gulika with standard segments logic (1/8th of day).
-    
-    factor = 0
-    ref_start = 0
-    duration = 0
-    
-    if is_maandi:
+        # Weekday (0=Sun...6=Sat)
+        weekday = int(jd_birth + 1.5) % 7
+        
+        factors_day = {0: 26, 1: 22, 2: 18, 3: 14, 4: 10, 5: 6, 6: 2}
+        factors_night = {0: 10, 1: 6, 2: 2, 3: 26, 4: 22, 5: 18, 6: 14}
+        
         if is_day:
-            factor = maandi_day[weekday]
-            ref_start = sunrise_jd
-            duration = day_len
+            factor = factors_day[weekday]
+            mandhi_jd = sunrise_jd + (day_len * (factor / 30.0))
         else:
-            w_night = (weekday + 4) % 7 # 5th from day lord? Wait. Maandi night factors are fixed.
-            # Using fixed table based on Day Lord of previous sunrise
-            factor = maandi_night[weekday]
-            ref_start = sunset_jd
-            duration = night_len
+            # Need weekday at sunrise for night calculation logic?
+            # Standard logic uses weekday of the sunrise immediately preceding.
+            # If jd_birth > sunset, it's the night of that day.
+            # If jd_birth < sunrise (early morning), it's the night of previous day.
+            # Simplify: Use weekday calculated from jd_birth which is absolute UTC.
+            # But Vedic day starts at Sunrise.
             
-        time_jd = ref_start + (duration * (factor / 30.0))
-    else:
-        # Gulika Calculation (1/8th segments)
-        # Day: Divide into 8. Saturn's segment is Gulika.
-        # Order starts from Day Lord.
-        # Sun(0): Sun, Mon, Tue, Wed, Thu, Fri, Sat(6th segment) -> Gulika
-        # Mon(1): Mon... Sat(5th segment)
-        # Sequence: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6)
-        day_lord = weekday
-        saturn_offset = (6 - day_lord + 7) % 7
-        # Segment index (0-7). Saturn is at index `saturn_offset`?
-        # Example Sun Day: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6). Gulika is 7th part? (Index 6).
-        # Gulika is start of Saturn's part.
-        
-        segment_num = (6 - day_lord + 7) % 7 # This gives index of Sat in sequence starting from Day Lord?
-        # Check: Sun(0): (6-0+7)%7 = 6. Segments 0..6. 7th segment. Correct.
-        # Mon(1): (6-1+7)%7 = 5. 6th segment. Correct.
-        # Sat(6): (6-6+7)%7 = 0. 1st segment. Correct.
-        
-        if not is_day:
-            # Night: Divide into 8. Order starts from 5th from Day Lord.
-            # Sun Day Night start lord: Jupiter(4) -> (0+4)%7=4?
-            # Lords: Sun(0)..Jup(4).
-            # Sequence: Jup, Ven, Sat, Sun, Mon...
-            # We need Saturn's position in this sequence.
-            night_start_lord = (day_lord + 4) % 7
-            segment_num = (6 - night_start_lord + 7) % 7
-            ref_start = sunset_jd
-            duration = night_len
-        else:
-            ref_start = sunrise_jd
-            duration = day_len
+            # Correct approach: Find Sunrise used for this day
+            weekday_sunrise = int(sunrise_jd + 1.5) % 7
+            factor = factors_night[weekday_sunrise]
+            mandhi_jd = sunset_jd + (night_len * (factor / 30.0))
             
-        # Start of segment
-        time_jd = ref_start + (duration * (segment_num / 8.0))
-        # Usually Gulika is the BEGINNING of the segment.
-    
-    # Calculate Ascendant (Longitude) at this time
-    cusps, ascmc = swe.houses(time_jd, details.latitude, details.longitude, b'W')
-    lon_tropical = ascmc[0]
-    return (lon_tropical - ayanamsa) % 360
+        # Calculate Mandhi Position
+        cusps, ascmc = swe.houses(mandhi_jd, geopos[1], geopos[0], b'W')
+        mandhi_trop = ascmc[0]
+        mandhi_sid = (mandhi_trop - ayanamsa) % 360
+        
+        mandhi_time_str = jd_to_time(mandhi_jd)
+        
+        pos = PlanetPosition(
+            name="Maandi",
+            longitude=mandhi_sid,
+            latitude=0,
+            speed=0,
+            retrograde=False,
+            house=0, # Calculated in parent
+            sign=get_sign_from_longitude(mandhi_sid),
+            nakshatra=get_nakshatra(mandhi_sid)[0],
+            nakshatra_lord=get_nakshatra(mandhi_sid)[1]
+        )
+        return pos, mandhi_time_str
+        
+    except Exception as e:
+        logger.error(f"Mandhi calc failed: {e}")
+        return None, None
+
 
 def calculate_jaimini_karakas(planets: List[dict]) -> dict:
     """
@@ -1078,45 +1093,159 @@ def calculate_d10(lon: float) -> str:
     d10_sign_index = (start + part) % 12
     return SIGNS[d10_sign_index]
 
-def calculate_dashas(moon_lon: float, birth_date: date) -> list:
+# ============================================================================
+# DASHA CALCULATION HELPERS
+# ============================================================================
+
+MAHADASHA_YEARS = {
+    "Ketu": 7, "Venus": 20, "Sun": 6, "Moon": 10, "Mars": 7, 
+    "Rahu": 18, "Jupiter": 16, "Saturn": 19, "Mercury": 17
+}
+
+PLANET_SEQUENCE = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"]
+
+def add_years_precise(d: datetime, years: float) -> datetime:
     """
-    Calculate Vimshottari Dasha sequence.
-    
-    Total lifespan: 120 years
-    9 planetary lords cycle through 27 nakshatras
+    Add years to date using exact solar days (365.242199 or 365.25 approx).
+    Standard Vedic often uses 360 day years (Sura) or 365.25. 
+    Vimshottari is generally 365.25 (Julian year) or Sidereal year.
+    Let's use 365.25 for consistency with standard software like JHouse.
     """
-    lords = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
-    years = [7, 20, 6, 10, 7, 18, 16, 19, 17]  # Total: 120 years
-    
+    days = years * 365.25
+    return d + timedelta(days=days)
+
+def get_dasha_start_point(moon_lon: float, birth_date: datetime) -> Tuple[str, float, float]:
+    """
+    Calculate the starting point of the Vimshottari Dasha.
+    Returns: (birth_lord, balance_years, passed_years_in_current_md)
+    """
+    # 1. Calculate Nakshatra
     nak_len = 360.0 / 27.0
     nak_index = int(moon_lon / nak_len)
     degree_into_nak = moon_lon % nak_len
     progress_percent = degree_into_nak / nak_len
     
+    # 2. Identify Lord
     lord_index = nak_index % 9
-    current_lord = lords[lord_index]
-    total_years = years[lord_index]
+    birth_lord = PLANET_SEQUENCE[lord_index]
+    total_years = MAHADASHA_YEARS[birth_lord]
     
-    balance_years = total_years * (1 - progress_percent)
+    # 3. Calculate Balance
+    # Balance = Remaining time
+    balance_years = total_years * (1.0 - progress_percent)
+    passed_years = total_years - balance_years
     
-    dashas = []
+    return birth_lord, balance_years, passed_years
+
+def generate_sub_periods(parent_lord: str, parent_start: datetime, parent_duration_years: float, level: str) -> List[Dict]:
+    """
+    Generic generator for sub-periods (Antardasha, Pratyantardasha).
+    level: 'AD' (Antardasha) or 'PD' (Pratyantardasha)
+    """
+    sub_periods = []
     
-    # Current dasha
-    dashas.append({
-        "lord": current_lord, 
-        "balance_years": round(balance_years, 2),
-        "full_duration": total_years
-    })
+    # Sequence starts from the Parent Lord
+    start_index = PLANET_SEQUENCE.index(parent_lord)
+    current_start = parent_start
     
-    # Next 8 dashas (entire cycle)
-    for i in range(1, 9):
-        idx = (lord_index + i) % 9
-        dashas.append({
-            "lord": lords[idx],
-            "duration": years[idx]
-        })
+    parent_md_years = MAHADASHA_YEARS[parent_lord] if level == 'AD' else 0 # Logic differs slightly
+    # Wait, generic logic:
+    # AD Duration = (MD_Years * AD_Lord_Years) / 120
+    # PD Duration = (AD_Duration_Years * PD_Lord_Years) / 120 (Relative to AD?)
+    # Actually: PD = (MD_Years * AD_Years * PD_Years) / (120 * 120) ?
+    # Let's keep it simple: Sub-period is proportional to its lord's share of 120.
+    
+    # For Antardasha: Proportion of the Mahadasha.
+    # AD_Duration = Parent_Duration * (Lord_Years / 120) -> Correct.
+    
+    for i in range(9):
+        idx = (start_index + i) % 9
+        lord = PLANET_SEQUENCE[idx]
+        lord_years = MAHADASHA_YEARS[lord]
         
-    return dashas
+        # Duration proportional to the lord's cycle share
+        duration = parent_duration_years * (lord_years / 120.0)
+        
+        end_date = add_years_precise(current_start, duration)
+        
+        sub_periods.append({
+            "lord": lord,
+            "start_date": current_start,
+            "end_date": end_date,
+            "duration": duration
+        })
+        current_start = end_date
+        
+    return sub_periods
+
+def calculate_dashas(moon_lon: float, birth_date: date) -> list:
+    """
+    Calculate Vimshottari Dasha sequence (Mahadasha-Antardasha).
+    Uses 'Theoretical Start' logic for precise alignment.
+    """
+    # Convert birth_date to datetime for calculation
+    birth_dt = datetime.combine(birth_date, time.min)
+    
+    # 1. Get Start Point
+    birth_lord, balance_years, passed_years = get_dasha_start_point(moon_lon, birth_dt)
+    
+    # 2. Determine Theoretical Start of Birth Mahadasha
+    # The date the current MD *would have* started if the native was born earlier.
+    # Start = Birth - Passed Years
+    current_md_start_theoretical = add_years_precise(birth_dt, -passed_years)
+    
+    all_dashas_flat = []
+    
+    # 3. Generate Cycle (Starting from Birth Lord)
+    # Generate enough Mahadashas to cover 120 years from birth
+    
+    start_lord_idx = PLANET_SEQUENCE.index(birth_lord)
+    current_md_start = current_md_start_theoretical
+    
+    # We generate a full 120y cycle (9 planets)
+    for i in range(9):
+        idx = (start_lord_idx + i) % 9
+        md_lord = PLANET_SEQUENCE[idx]
+        md_duration = MAHADASHA_YEARS[md_lord]
+        
+        md_end = add_years_precise(current_md_start, md_duration)
+        
+        # Generate Antardashas for this MD
+        ads = generate_sub_periods(md_lord, current_md_start, md_duration, 'AD')
+        
+        # Flatten and Filter
+        for ad in ads:
+            # We only care about periods that end AFTER birth (or allow a little overlap)
+            if ad['end_date'] > birth_dt:
+                
+                # Check for Pratyantardashas (Level 3) - Optional
+                # pds = generate_sub_periods(ad['lord'], ad['start_date'], ad['duration'], 'PD')
+                # For now, sticking to Antardashas as requested for the UI table fix.
+                
+                # Clip start date if it's the very first period overlapping birth
+                # But kept cleanly, the UI might prefer to see the full period and "Balance".
+                # Standard practice: Show the full sub-period dates, but note the balance?
+                # The user's screenshot showed precise dates.
+                # If we clip, we match the "Balance" concept.
+                
+                final_start = ad['start_date']
+                # if final_start < birth_dt:
+                #    final_start = birth_dt 
+                # Calculating "Balance" usually implies the first period starts AT birth.
+                # Let's clip to birth_dt for the first displayed entry.
+                
+                display_start = max(final_start, birth_dt)
+                
+                all_dashas_flat.append({
+                    "lord": f"{md_lord}-{ad['lord']}",
+                    "start_date": display_start.isoformat().split('T')[0],
+                    "end_date": ad['end_date'].isoformat().split('T')[0],
+                    "duration": float(ad['duration']) # Precise duration
+                })
+        
+        current_md_start = md_end
+
+    return all_dashas_flat
 
 def get_current_transits() -> list[dict]:
     """

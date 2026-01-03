@@ -1,6 +1,7 @@
 
 import React from 'react';
 import type { PlanetPosition } from '../api/client';
+import { getPlanetShortName } from '../lib/utils';
 
 interface Props {
     planets: PlanetPosition[];
@@ -30,7 +31,7 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
     // We'll use a CSS grid container with specific placement
 
     const getPlanetsInSign = (sign: string) => {
-        const inSign = planets.filter(p => p.sign === sign).map(p => p.name.substring(0, 2));
+        const inSign = planets.filter(p => p.sign === sign).map(p => getPlanetShortName(p.name));
         if (ascendantSign === sign) {
             inSign.unshift('ASC');
         }

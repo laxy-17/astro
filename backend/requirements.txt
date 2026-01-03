@@ -8,3 +8,4 @@ pytz
 requests
 google-genai
 python-dotenv
+googlemaps==4.10.0

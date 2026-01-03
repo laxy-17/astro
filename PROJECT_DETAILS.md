@@ -1,18 +1,20 @@
 # Project 8Stro - Vedic Astrology App (MVP)
 
 **Version**: 1.0.0
-**Date**: January 1, 2026
-**Status**: Feature Complete (Ready for Beta) - *UI Polished*
+**Date**: January 3, 2026
+**Status**: Feature Complete (Beta 1.5) - *Celestial Upgrade Applied*
 
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
+
+Recent major updates include a "Celestial" UI overhaul using Shadcn/UI, an interactive Dasha timeline, and rigorous accuracy verification against Gold Standard charts.
 
 ## 2. Technology Stack
 
 ### Frontend
 - **Framework**: React 18 (Vite)
 - **Language**: TypeScript
-- **Styling**: TailwindCSS (Custom "Cosmic" Dark Mode Theme, Shadcn/UI integration)
+- **Styling**: TailwindCSS (Custom "Cosmic" Dark Mode Theme, **Shadcn/UI components**)
 - **State Management**: React Hooks
 - **Routing**: React Router
 - **HTTP Client**: Axios
@@ -31,12 +33,13 @@ Project 8Stro is a modern, premium Vedic Astrology web application designed to p
 - **Timezone**: `timezonefinder` + `pytz` (Automatic coordinate-to-timezone resolution)
 - **Calculations**: 
     - Planetary Longitudes (0-360, DMS format)
+    - **Maandi Calculation**: Precise sunrise-based logic for day/night births.
     - House Systems (Whole Sign default, Placidus supported in engine)
     - Divisional Charts: D1 (Rashi), D9 (Navamsha), D10 (Dashamsha)
     - Ayanamsa: Lahiri (Chitra Paksha)
     - Strength: Vimsopaka Bala (0-20 scale)
-    - Dashas: Vimshottari Mahadasha system
-    - Panchanga: Tithi, Nakshatra, Yoga, Karana, Vara (with visualization)
+    - Dashas: Vimshottari Mahadasha system with **interactive sub-period timeline**.
+    - Panchanga: Tithi, Nakshatra, Yoga, Karana, Vara (Start/End times calculated)
 
 ### AI Integration
 - **Provider**: Google Gemini API
@@ -61,20 +64,21 @@ Project 8Stro is a modern, premium Vedic Astrology web application designed to p
 3. **Frontend**: 
     - Renders North/South Indian Chart Styles (SVG/Canvas).
     - Displays interactive data tables and strength bars.
-    - **New**: Card-based Panchanga Grid with progress bars.
-    - **New**: Tabular Vimshottari Dasha view with active period highlighting.
-    - Streaming markdown response for AI Mentor.
+    - **Panchanga**: Responsive Shadcn Cards with glass-panel aesthetics.
+    - **Dasha**: Interactive, expandable table with precise start/end dates.
+    - Streaming markdown response for AI Mentor with dark-mode support.
 
 ### Key Features Implemented
-- **Accuracy**: Verified against standard reference charts (e.g., Steve Jobs).
+- **Accuracy**: Verified against standard reference charts (Steve Jobs, Mark Zuckerberg) and user cases (LV).
 - **Persistence**: Save, Load, and Delete charts (Upsert logic implemented).
 - **Export**: One-click PDF download of the entire dashboard.
 - **Responsiveness**: Fully mobile-responsive grid layout.
 - **Resilience**: Graceful error handling for missing API keys or offline states.
 - **UI Polish**:
-    - High-contrast text for accessibility.
+    - High-contrast text for accessibility (AI Mentor).
+    - Astrological degree display (0-30°) for easier reading.
     - Single-line longitude formatting.
-    - Clean, modern table structures for planetary data.
+    - Maandi abbreviated as 'Mn'.
 
 ## 4. Project Structure
 ```

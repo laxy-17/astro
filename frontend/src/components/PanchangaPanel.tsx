@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import type { Panchanga, Dasha } from '../api/client';
 import { calculateDashaDates } from '../utils/astroUtils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface Props {
     data: Panchanga;
@@ -54,168 +56,157 @@ export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate }) => 
         <div className="space-y-6">
             {/* Current Mahadasha Context */}
             {dashaInfo && (
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-100 shadow-sm">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {dashaInfo.lord} Mahadasha
-                    </h3>
-                    <p className="text-sm text-gray-600 font-mono">
-                        {dashaInfo.startDate} — {dashaInfo.endDate} ({dashaInfo.status})
-                    </p>
-                </div>
+                <Card className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 border-purple-100/50 shadow-sm backdrop-blur-sm">
+                    <CardContent className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            {dashaInfo.lord} Mahadasha
+                        </h3>
+                        <p className="text-sm text-gray-600 font-mono">
+                            {dashaInfo.startDate} — {dashaInfo.endDate} ({dashaInfo.status})
+                        </p>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Panchanga Elements Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 {/* Tithi Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">🌙</span>
-                        <div>
-                            <h4 className="font-semibold text-gray-900">Tithi (Lunar Day)</h4>
-                            <p className="text-xs text-gray-500">Moon phase indicator</p>
+                <Card className="hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl filter drop-shadow-md">🌙</span>
+                            <div>
+                                <CardTitle>Tithi</CardTitle>
+                                <CardDescription>Lunar Day</CardDescription>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                         <div>
-                            <p className="text-2xl font-bold text-gray-900 leading-none">
+                            <p className="text-2xl font-bold text-foreground leading-none">
                                 {data.tithi.name}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 font-medium">
                                 {data.tithi.paksha} Paksha
                             </p>
                         </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full">
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-blue-500"
-                                    style={{ width: `${data.tithi.completion}%` }}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1 text-right">
+                        <div className="space-y-2">
+                            <Progress value={data.tithi.completion} className="h-2" />
+                            <p className="text-xs text-muted-foreground text-right font-mono">
                                 {data.tithi.completion.toFixed(1)}% complete
                             </p>
                         </div>
-
-                        <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-700 italic">
+                        <div className="pt-3 border-t border-border/50">
+                            <p className="text-sm text-muted-foreground italic">
                                 "{getTithiMeaning(data.tithi.name)}"
                             </p>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Nakshatra Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">⭐</span>
-                        <div>
-                            <h4 className="font-semibold text-gray-900">Nakshatra</h4>
-                            <p className="text-xs text-gray-500">Lunar mansion</p>
+                <Card className="hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl filter drop-shadow-md">⭐</span>
+                            <div>
+                                <CardTitle>Nakshatra</CardTitle>
+                                <CardDescription>Lunar Mansion</CardDescription>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                         <div>
-                            <p className="text-2xl font-bold text-gray-900 leading-none">
+                            <p className="text-2xl font-bold text-foreground leading-none">
                                 {data.nakshatra.name}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 font-medium">
                                 Pada {data.nakshatra.pada} • Lord: {data.nakshatra.lord}
                             </p>
                         </div>
-
-                        <div className="w-full">
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-indigo-500"
-                                    style={{ width: `${data.nakshatra.completion}%` }}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1 text-right">
+                        <div className="space-y-2">
+                            <Progress value={data.nakshatra.completion} className="h-2 bg-indigo-100" />
+                            <p className="text-xs text-muted-foreground text-right font-mono">
                                 {data.nakshatra.completion.toFixed(1)}% complete
                             </p>
                         </div>
-
-                        <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-700 italic">
+                        <div className="pt-3 border-t border-border/50">
+                            <p className="text-sm text-muted-foreground italic">
                                 "{getNakshatraMeaning(data.nakshatra.name)}"
                             </p>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Yoga Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">✨</span>
-                        <div>
-                            <h4 className="font-semibold text-gray-900">Yoga</h4>
-                            <p className="text-xs text-gray-500">Sun-Moon combination</p>
+                <Card className="hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl filter drop-shadow-md">✨</span>
+                            <div>
+                                <CardTitle>Yoga</CardTitle>
+                                <CardDescription>Sun-Moon Union</CardDescription>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <p className="text-2xl font-bold text-gray-900">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-2xl font-bold text-foreground">
                             {data.yoga.name}
                         </p>
-
-                        <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-700 italic">
+                        <div className="pt-3 border-t border-border/50">
+                            <p className="text-sm text-muted-foreground italic">
                                 "{getYogaMeaning(data.yoga.name)}"
                             </p>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Karana Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">🔄</span>
-                        <div>
-                            <h4 className="font-semibold text-gray-900">Karana</h4>
-                            <p className="text-xs text-gray-500">Half of Tithi</p>
+                <Card className="hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl filter drop-shadow-md">🔄</span>
+                            <div>
+                                <CardTitle>Karana</CardTitle>
+                                <CardDescription>Half Tithi</CardDescription>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <p className="text-2xl font-bold text-gray-900">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-2xl font-bold text-foreground">
                             {data.karana.name}
                         </p>
-
-                        <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-700 italic">
+                        <div className="pt-3 border-t border-border/50">
+                            <p className="text-sm text-muted-foreground italic">
                                 "Action: {getKaranaMeaning(data.karana.name)}"
                             </p>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 {/* Vara Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">📅</span>
-                        <div>
-                            <h4 className="font-semibold text-gray-900">Vara</h4>
-                            <p className="text-xs text-gray-500">Day of the week</p>
+                <Card className="hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl filter drop-shadow-md">📅</span>
+                            <div>
+                                <CardTitle>Vara</CardTitle>
+                                <CardDescription>Weekday</CardDescription>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <p className="text-2xl font-bold text-gray-900">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-2xl font-bold text-foreground">
                             {data.vara}
                         </p>
-
-                        <div className="pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-700 italic">
+                        <div className="pt-3 border-t border-border/50">
+                            <p className="text-sm text-muted-foreground italic">
                                 "{getVaraMeaning(data.vara)}"
                             </p>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
             </div>
         </div>

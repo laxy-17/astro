@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlanetPosition, House } from '../api/client';
+import { getPlanetShortName } from '../lib/utils';
 
 interface Props {
     planets: PlanetPosition[];
@@ -41,7 +42,7 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
     ];
 
     const getPlanetsInHouse = (houseNum: number) => {
-        return planets.filter(p => p.house === houseNum).map(p => p.name.substring(0, 2));
+        return planets.filter(p => p.house === houseNum).map(p => getPlanetShortName(p.name));
     };
 
     const getSignForHouse = (houseNum: number) => {

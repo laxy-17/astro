@@ -13,6 +13,8 @@ import { BirthParticulars } from './BirthParticulars';
 import { PanchangaPanel } from './PanchangaPanel';
 import { TransitsTab } from './TransitsTab';
 import { InsightsPanel } from './InsightsPanel';
+import type { LocationDetails } from './LocationSearchInput';
+import { LocationSearchInput } from './LocationSearchInput';
 
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
@@ -54,6 +56,20 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
     // Save to localStorage whenever details change
     const handleChange = (field: keyof BirthDetails, value: string | number) => {
         const newDetails = { ...details, [field]: value };
+        setDetails(newDetails);
+        localStorage.setItem('last_birth_details', JSON.stringify(newDetails));
+    };
+
+    const handleLocationSelect = (loc: LocationDetails) => {
+        const newDetails = {
+            ...details,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            location_city: loc.city,
+            location_state: loc.state,
+            location_country: loc.country,
+            location_timezone: loc.timezone
+        };
         setDetails(newDetails);
         localStorage.setItem('last_birth_details', JSON.stringify(newDetails));
     };
@@ -115,30 +131,16 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lat</label>
-                        <input
-                            type="number"
-                            step="any"
-                            placeholder="37.77"
-                            required
-                            value={details.latitude || ''}
-                            onChange={(e) => handleChange('latitude', parseFloat(e.target.value))}
-                            className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Long</label>
-                        <input
-                            type="number"
-                            step="any"
-                            placeholder="-122.41"
-                            required
-                            value={details.longitude || ''}
-                            onChange={(e) => handleChange('longitude', parseFloat(e.target.value))}
-                            className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
-                        />
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</label>
+                    <LocationSearchInput
+                        onLocationSelect={handleLocationSelect}
+                        placeholder="Search City (e.g. Mumbai, New York)..."
+                        value={details.location_city ? `${details.location_city}, ${details.location_country || ''}` : ''}
+                    />
+                    <div className="flex gap-2 text-[10px] text-muted-foreground font-mono pt-1 px-1">
+                        <span>Lat: {details.latitude?.toFixed(4)}</span>
+                        <span>Long: {details.longitude?.toFixed(4)}</span>
                     </div>
                 </div>
 

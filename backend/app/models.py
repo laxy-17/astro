@@ -8,6 +8,11 @@ class BirthDetails(BaseModel):
     latitude: float
     longitude: float
     ayanamsa_mode: str = "LAHIRI"
+    # New Location Fields
+    location_city: Optional[str] = None
+    location_state: Optional[str] = None
+    location_country: Optional[str] = None
+    location_timezone: Optional[str] = None
 
 class PlanetPosition(BaseModel):
     name: str = Field(..., description="Name of the planet (e.g., Sun, Moon)")
@@ -85,3 +90,8 @@ class ChartResponse(BaseModel):
     # Phase 2 Enhancements
     strengths: Optional[dict[str, float]] = None # Planet -> Score (0-20)
     divisional_charts: Optional[dict[str, VargaChart]] = None # D-Chart Name -> Chart Data
+    
+    # Debug / Verification Fields
+    sunrise_time: Optional[str] = None
+    sunset_time: Optional[str] = None
+    mandhi_time_local: Optional[str] = None

@@ -36,10 +36,65 @@ export interface DashaRow {
     startDate: string;
     endDate: string;
     duration: number; // in years
+    isSubPeriod?: boolean;
 }
+
+export interface DashaGroup {
+    lord: string;
+    startDate: string;
+    endDate: string;
+    duration: number;
+    subPeriods: DashaRow[];
+}
+
+export const groupDashas = (rows: DashaRow[]): DashaGroup[] => {
+    const groups: DashaGroup[] = [];
+    let currentGroup: DashaGroup | null = null;
+
+    rows.forEach(row => {
+        // Check if it's a sub-period (contains hyphen)
+        if (row.lord.includes('-')) {
+            // It's a sub-period (e.g. Venus-Sun)
+            if (currentGroup) {
+                currentGroup.subPeriods.push({ ...row, isSubPeriod: true });
+            }
+        } else {
+            // It's a major period (Mahadasha)
+            // Push previous group if exists
+            if (currentGroup) {
+                groups.push(currentGroup);
+            }
+            // Start new group
+            currentGroup = {
+                lord: row.lord,
+                startDate: row.startDate,
+                endDate: row.endDate,
+                duration: row.duration,
+                subPeriods: []
+            };
+        }
+    });
+
+    // Push last group
+    if (currentGroup) {
+        groups.push(currentGroup);
+    }
+
+    return groups;
+};
 
 export const calculateDashaDates = (dashas: Dasha[], birthDateStr: string): DashaRow[] => {
     if (!dashas || dashas.length === 0) return [];
+
+    // If backend provides dates, use them directly
+    if (dashas[0].start_date && dashas[0].end_date) {
+        return dashas.map(d => ({
+            lord: d.lord,
+            startDate: d.start_date!.split('T')[0],
+            endDate: d.end_date!.split('T')[0],
+            duration: d.duration || 0
+        }));
+    }
 
     const birthDate = new Date(birthDateStr);
     const rows: DashaRow[] = [];

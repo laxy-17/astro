@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8000'; // Hardcoded for local reliable dev
+const API_BASE = 'http://localhost:8001'; // Hardcoded for local reliable dev
 
 // Create axios instance with configuration
 const axiosInstance = axios.create({
@@ -42,6 +42,10 @@ export interface BirthDetails {
   latitude: number;  // -90 to 90
   longitude: number; // -180 to 180
   ayanamsa_mode?: string; // e.g. 'LAHIRI', 'SAYANA'
+  location_city?: string;
+  location_state?: string;
+  location_country?: string;
+  location_timezone?: string;
 }
 
 export interface PlanetPosition {
@@ -69,6 +73,8 @@ export interface Dasha {
   balance_years?: number;
   full_duration?: number;
   duration?: number;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface TithiData {
@@ -135,6 +141,10 @@ export interface SavedChart {
   latitude: number;
   longitude: number;
   ayanamsa_mode: string;
+  location_city?: string;
+  location_state?: string;
+  location_country?: string;
+  location_timezone?: string;
   created_at: string;
 }
 

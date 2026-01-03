@@ -27,6 +27,35 @@ vedic_service = VedicAstroService()
 from .integrations.ai_service_gemini import AIService
 ai_service = AIService()
 
+from .geocoding import search_locations, get_location_details
+from fastapi import Query
+
+@app.get("/api/locations/search", tags=["Locations"])
+async def search_location_autocomplete(
+    query: str = Query(..., min_length=2, description="Search query"),
+    limit: int = Query(5, ge=1, le=10)
+):
+    """
+    Search for locations with autocomplete
+    """
+    if len(query) < 2:
+        return {"results": []}
+    
+    results = search_locations(query, limit)
+    return {"results": results}
+
+@app.get("/api/locations/details/{place_id}", tags=["Locations"])
+async def get_location(place_id: str):
+    """
+    Get full location details including lat/long from place_id
+    """
+    details = get_location_details(place_id)
+    
+    if not details:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    return details
+
 class MentorRequest(BaseModel):
     query: str
     chart_data: ChartResponse
@@ -213,7 +242,11 @@ def save_chart_endpoint(req: SaveChartRequest):
             req.details.time,
             req.details.latitude,
             req.details.longitude,
-            req.details.ayanamsa_mode
+            req.details.ayanamsa_mode,
+            req.details.location_city,
+            req.details.location_state,
+            req.details.location_country,
+            req.details.location_timezone
         )
         return {
             "status": "success", 

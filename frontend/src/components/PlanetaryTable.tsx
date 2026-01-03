@@ -30,7 +30,7 @@ export const PlanetaryTable: React.FC<Props> = ({ planets, ascendant }) => {
         {
             name: 'Ascendant',
             sign: ascendant.sign,
-            longitude: formatDMS(ascendant.degree),
+            longitude: formatDMS(ascendant.degree % 30),
             nakshatra: '-',
             pada: calculatePada(ascendant.degree),
             speed: 0,
@@ -40,7 +40,7 @@ export const PlanetaryTable: React.FC<Props> = ({ planets, ascendant }) => {
         ...planets.map(p => ({
             name: p.name,
             sign: p.sign,
-            longitude: formatDMS(p.longitude),
+            longitude: formatDMS(p.longitude % 30),
             nakshatra: p.nakshatra,
             pada: calculatePada(p.longitude),
             speed: p.speed,
@@ -121,7 +121,7 @@ export const PlanetaryTable: React.FC<Props> = ({ planets, ascendant }) => {
                             <div className="grid grid-cols-2 gap-2 text-sm border-t border-border/40 pt-2">
                                 <div>
                                     <span className="text-muted-foreground text-xs block">Longitude</span>
-                                    <span className="font-mono text-foreground">{planet.longitude}</span>
+                                    <span className="font-mono text-foreground whitespace-nowrap">{planet.longitude}</span>
                                 </div>
                                 <div>
                                     <span className="text-muted-foreground text-xs block">Nakshatra</span>

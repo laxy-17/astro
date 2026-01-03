@@ -16,6 +16,10 @@ class SavedChart(BaseModel):
     latitude: float
     longitude: float
     ayanamsa_mode: str
+    location_city: Optional[str] = None
+    location_state: Optional[str] = None
+    location_country: Optional[str] = None
+    location_timezone: Optional[str] = None
     created_at: str
 
 def init_db():
@@ -30,13 +34,28 @@ def init_db():
             latitude REAL NOT NULL,
             longitude REAL NOT NULL,
             ayanamsa_mode TEXT NOT NULL,
+            location_city TEXT,
+            location_state TEXT,
+            location_country TEXT,
+            location_timezone TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Simple migration hack for existing tables
+    try:
+        c.execute('ALTER TABLE charts ADD COLUMN location_city TEXT')
+        c.execute('ALTER TABLE charts ADD COLUMN location_state TEXT')
+        c.execute('ALTER TABLE charts ADD COLUMN location_country TEXT')
+        c.execute('ALTER TABLE charts ADD COLUMN location_timezone TEXT')
+    except sqlite3.OperationalError:
+        # Columns likely exist
+        pass
+        
     conn.commit()
     conn.close()
 
-def save_chart(name: str, d: Any, t: Any, lat: float, lon: float, mode: str):
+def save_chart(name: str, d: Any, t: Any, lat: float, lon: float, mode: str, loc_city: str = None, loc_state: str = None, loc_country: str = None, loc_tz: str = None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -53,16 +72,19 @@ def save_chart(name: str, d: Any, t: Any, lat: float, lon: float, mode: str):
         chart_id = row[0]
         c.execute('''
             UPDATE charts 
-            SET date=?, time=?, latitude=?, longitude=?, ayanamsa_mode=?, created_at=CURRENT_TIMESTAMP
+            SET date=?, time=?, latitude=?, longitude=?, ayanamsa_mode=?, 
+                location_city=?, location_state=?, location_country=?, location_timezone=?,
+                created_at=CURRENT_TIMESTAMP
             WHERE id=?
-        ''', (date_str, time_str, lat, lon, mode, chart_id))
+        ''', (date_str, time_str, lat, lon, mode, loc_city, loc_state, loc_country, loc_tz, chart_id))
         action = "updated"
     else:
         # Insert new
         c.execute('''
-            INSERT INTO charts (name, date, time, latitude, longitude, ayanamsa_mode)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (name, date_str, time_str, lat, lon, mode))
+            INSERT INTO charts (name, date, time, latitude, longitude, ayanamsa_mode,
+                                location_city, location_state, location_country, location_timezone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, date_str, time_str, lat, lon, mode, loc_city, loc_state, loc_country, loc_tz))
         chart_id = c.lastrowid
         action = "created"
         
@@ -88,6 +110,10 @@ def list_charts() -> List[SavedChart]:
             latitude=row['latitude'],
             longitude=row['longitude'],
             ayanamsa_mode=row['ayanamsa_mode'],
+            location_city=row['location_city'] if 'location_city' in row.keys() else None,
+            location_state=row['location_state'] if 'location_state' in row.keys() else None,
+            location_country=row['location_country'] if 'location_country' in row.keys() else None,
+            location_timezone=row['location_timezone'] if 'location_timezone' in row.keys() else None,
             created_at=row['created_at']
         ))
     return charts
