@@ -12,31 +12,31 @@
     --card-foreground: 210 9% 19%;
     --popover: 0 0% 100%;
     --popover-foreground: 210 9% 19%;
-    --primary: 203 58% 59%;
-    /* #5BA3D0 */
+    --primary: 256 25% 60%;
+    /* Violet #8B7AB8 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 256 25% 60%;
-    /* #8B7AB8 */
+    --secondary: 203 58% 59%;
+    /* Sky Blue #5BA3D0 */
     --secondary-foreground: 0 0% 100%;
     --muted: 197 44% 88%;
     /* #D4E8F0 */
     --muted-foreground: 210 9% 45%;
     /* #636E72 approx */
-    --accent: 256 25% 60%;
+    --accent: 25 95% 61%;
+    /* Cosmic Orange #FB923C */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 197 44% 88%;
     /* #D4E8F0 */
     --input: 197 44% 88%;
-    --ring: 203 58% 59%;
+    --ring: 256 25% 60%;
     --radius: 0.75rem;
 
-    /* Custom Colors - Light Mode */
-    --cosmic-gold: #8B7AB8;
-    /* Using Violet as the "Accent" gold */
+    /* Custom Colors - Semantic Names */
+    --cosmic-violet: #8B7AB8;
     --astral-blue: #5BA3D0;
-    --astral-red: #D97777;
+    --cosmic-orange: #FB923C;
     --text-primary: #2D3436;
     --text-secondary: #636E72;
     --text-tertiary: #7BB8DC;
@@ -89,6 +89,24 @@
   box-shadow: 0 2px 8px rgba(91, 163, 208, 0.08);
 }
 
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton {
+  @apply bg-skyblue-200/40 rounded-md;
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+}
+
 .text-gold {
-  color: #ffd700;
+  color: #fb923c;
+  /* Using Orange for semantic gold */
 }

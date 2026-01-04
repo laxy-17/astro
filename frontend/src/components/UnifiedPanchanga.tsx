@@ -18,6 +18,9 @@ import { Loader2, Calendar, Sun, Moon, Sparkles, AlertTriangle, Clock } from 'lu
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getTerm } from '../data/glossary';
+import { HelpCircle } from "lucide-react";
 import '../styles/daily-panchanga.css';
 
 interface Props {
@@ -159,20 +162,26 @@ export const UnifiedPanchanga: React.FC<Props> = ({ birthDetails }) => {
             ) : genericData && (
                 <>
                     {/* Hindu Calendar Banner */}
-                    <div className="hindu-calendar-banner bg-gradient-to-r from-violet-600 to-indigo-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-                        <div className="relative z-10 flex justify-between items-end">
-                            <div>
-                                <h3 className="text-violet-200 text-xs uppercase tracking-widest font-bold mb-1">Hindu Calendar</h3>
-                                <div className="text-3xl font-bold">{genericData.hindu_calendar.month} • {genericData.hindu_calendar.paksha} Paksha</div>
+                    <div className="hindu-calendar-banner bg-gradient-to-br from-violet-700 via-violet-600 to-indigo-700 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
+                        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center md:items-end gap-6 text-center md:text-left">
+                            <div className="space-y-2">
+                                <h3 className="text-violet-200 text-xs uppercase tracking-[0.2em] font-black mb-1 opacity-80">Hindu Vedic Calendar</h3>
+                                <div className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-sm">
+                                    {genericData.hindu_calendar.month} <span className="text-violet-300 font-light mx-2">|</span> {genericData.hindu_calendar.paksha} Paksha
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <div className="text-sm text-violet-200">{genericData.hindu_calendar.samvat}</div>
-                                <div className="text-4xl font-black text-white/20 absolute -bottom-4 right-4">{genericData.hindu_calendar.year}</div>
-                                <div className="text-2xl font-bold relative z-10">{genericData.hindu_calendar.year}</div>
+                            <div className="flex flex-col items-center md:items-end">
+                                <div className="text-lg font-bold text-violet-100 mb-1">{genericData.hindu_calendar.samvat}</div>
+                                <div className="text-5xl font-black text-white px-4 py-2 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 shadow-inner">
+                                    {genericData.hindu_calendar.year}
+                                </div>
                             </div>
                         </div>
-                        <div className="absolute top-0 right-0 p-8 opacity-10">
-                            <Sun className="w-48 h-48 animate-spin-slow" />
+                        <div className="absolute -top-12 -right-12 p-8 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
+                            <Sun className="w-64 h-64 animate-spin-slow" />
+                        </div>
+                        <div className="absolute -bottom-8 -left-8 p-8 opacity-5">
+                            <Moon className="w-48 h-48" />
                         </div>
                     </div>
 
@@ -215,43 +224,89 @@ export const UnifiedPanchanga: React.FC<Props> = ({ birthDetails }) => {
                             <h3 className="text-lg font-bold text-neutral-600 flex items-center gap-2">
                                 <Clock className="w-5 h-5 text-violet-500" /> Special Timings
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Auspicious */}
-                                <div className="border border-green-500/30 rounded-xl bg-green-50/50 overflow-hidden">
-                                    <div className="bg-green-100/50 px-4 py-3 border-b border-green-500/30 flex items-center gap-2">
-                                        <Sparkles className="w-4 h-4 text-green-700" />
-                                        <h4 className="font-bold text-green-800">Auspicious</h4>
+                                <div className="border border-green-500/20 rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col">
+                                    <div className="bg-green-500 px-5 py-4 flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <Sparkles className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h4 className="font-black text-white uppercase tracking-wider text-sm">Auspicious Periods</h4>
                                     </div>
-                                    <div className="p-4 space-y-3">
+                                    <div className="p-5 space-y-4 flex-grow">
                                         {displayTimings.filter(t => t.quality === 'Auspicious').map((st, idx) => (
-                                            <div key={idx} className="p-3 rounded-lg border border-green-600/20 bg-white/60 space-y-1">
-                                                <div className="text-green-900 font-bold flex justify-between">
-                                                    <span>{st.name}</span>
-                                                    <span className="text-sm font-mono text-green-800 bg-green-200/50 px-2 rounded">{st.start_time} - {st.end_time}</span>
+                                            <div key={idx} className="group relative">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start gap-1 mb-2">
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="text-sm font-bold text-neutral-800 leading-tight">{st.name}</div>
+                                                            {getTerm(st.name) && (
+                                                                <TooltipProvider delayDuration={200}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger>
+                                                                            <HelpCircle className="w-3 h-3 text-neutral-400 hover:text-green-600 transition-colors" />
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="max-w-xs bg-violet-900 text-white border-violet-700">
+                                                                            <p className="text-xs leading-relaxed">{getTerm(st.name)?.definition}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-neutral-400 font-medium leading-normal">{st.description}</p>
+                                                    </div>
+                                                    <div className="sm:text-right shrink-0">
+                                                        <div className="text-sm font-black text-green-600 font-mono tracking-tighter">{st.start_time} - {st.end_time}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-green-800/80">{st.description}</div>
+                                                <div className="h-1.5 w-full bg-green-50 rounded-full overflow-hidden border border-green-100/50">
+                                                    <div className="h-full bg-green-500/30 w-full animate-pulse-slow" />
+                                                </div>
                                             </div>
                                         ))}
                                         {displayTimings.filter(t => t.quality === 'Auspicious').length === 0 && (
-                                            <p className="text-sm text-green-800/60 italic">No specific auspicious timings.</p>
+                                            <p className="text-sm text-neutral-400 text-center py-4 italic">No specific auspicious timings today.</p>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Inauspicious */}
-                                <div className="border border-red-500/30 rounded-xl bg-red-50/50 overflow-hidden">
-                                    <div className="bg-red-100/50 px-4 py-3 border-b border-red-500/30 flex items-center gap-2">
-                                        <AlertTriangle className="w-4 h-4 text-red-700" />
-                                        <h4 className="font-bold text-red-800">Inauspicious</h4>
+                                <div className="border border-red-500/20 rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col">
+                                    <div className="bg-red-500 px-5 py-4 flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <AlertTriangle className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h4 className="font-black text-white uppercase tracking-wider text-sm">Inauspicious Periods</h4>
                                     </div>
-                                    <div className="p-4 space-y-3">
+                                    <div className="p-5 space-y-4 flex-grow">
                                         {displayTimings.filter(t => ['Inauspicious', 'Neutral/Mixed', 'Bad'].includes(t.quality)).map((st, idx) => (
-                                            <div key={idx} className="p-3 rounded-lg border border-red-600/20 bg-white/60 space-y-1">
-                                                <div className="text-red-900 font-bold flex justify-between">
-                                                    <span>{st.name}</span>
-                                                    <span className="text-sm font-mono text-red-800 bg-red-200/50 px-2 rounded">{st.start_time} - {st.end_time}</span>
+                                            <div key={idx} className="group relative">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start gap-1 mb-2">
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="text-sm font-bold text-neutral-800 leading-tight">{st.name}</div>
+                                                            {getTerm(st.name) && (
+                                                                <TooltipProvider delayDuration={200}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger>
+                                                                            <HelpCircle className="w-3 h-3 text-neutral-400 hover:text-red-500 transition-colors" />
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="max-w-xs bg-violet-900 text-white border-violet-700">
+                                                                            <p className="text-xs leading-relaxed">{getTerm(st.name)?.definition}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-neutral-400 font-medium leading-normal">{st.description}</p>
+                                                    </div>
+                                                    <div className="sm:text-right shrink-0">
+                                                        <div className="text-sm font-black text-red-600 font-mono tracking-tighter">{st.start_time} - {st.end_time}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-red-800/80">{st.description}</div>
+                                                <div className="h-1.5 w-full bg-red-50 rounded-full overflow-hidden border border-red-100/50">
+                                                    <div className="h-full bg-red-500/30 w-full" />
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -280,20 +335,38 @@ export const UnifiedPanchanga: React.FC<Props> = ({ birthDetails }) => {
                                                 const qLower = quality.toLowerCase();
                                                 const isGood = qLower.includes('good') || qLower.includes('auspicious') || qLower.includes('excellent');
                                                 const isAvg = qLower.includes('average') || qLower.includes('neutral') || qLower.includes('mixed');
-                                                // Default to bad if not good or avg, but explicit check helps debugging
+
+                                                // Check for active Hora
+                                                const now = new Date();
+                                                const currentMins = now.getHours() * 60 + now.getMinutes();
+                                                const [sH, sM] = h.start_time.split(':').map(Number);
+                                                const [eH, eM] = h.end_time.split(':').map(Number);
+                                                let startMins = sH * 60 + sM;
+                                                let endMins = eH * 60 + eM;
+                                                if (endMins < startMins) endMins += 24 * 60; // Handle midnight crossing
+
+                                                const isActive = currentMins >= startMins && currentMins < endMins;
 
                                                 return (
-                                                    <TableRow key={i} className={`border-skyblue-50 ${i % 2 === 0 ? 'bg-white' : 'bg-skyblue-50/20'} hover:bg-skyblue-100/30 transition-colors`}>
-                                                        <TableCell className="font-medium text-neutral-500 py-2">
+                                                    <TableRow key={i} className={`
+                                                        ${isActive ? 'bg-violet-100/50 border-l-4 border-l-violet-500 shadow-sm' : i % 2 === 0 ? 'bg-white' : 'bg-skyblue-50/20'} 
+                                                        hover:bg-skyblue-100/30 transition-all duration-300
+                                                    `}>
+                                                        <TableCell className="font-medium text-neutral-500 py-3 relative">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-[10px] font-bold">
+                                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? 'bg-violet-500 text-white animate-pulse' : 'bg-violet-100 text-violet-600'}`}>
                                                                     {h.ruler.substring(0, 2)}
                                                                 </div>
-                                                                <span className="text-xs">{h.ruler}</span>
+                                                                <span className={isActive ? 'font-bold text-violet-700' : ''}>{h.ruler}</span>
                                                             </div>
+                                                            {isActive && (
+                                                                <span className="absolute top-0 right-2 text-[9px] font-bold text-violet-400 uppercase tracking-widest mt-1">
+                                                                    Active
+                                                                </span>
+                                                            )}
                                                         </TableCell>
-                                                        <TableCell className="text-xs font-mono text-neutral-400 py-2">
-                                                            {h.start_time.split(' ')[0]}
+                                                        <TableCell className={`text-xs font-mono py-2 ${isActive ? 'text-violet-700 font-bold' : 'text-neutral-400'}`}>
+                                                            {h.start_time.split(' ')[0]} - {h.end_time.split(' ')[0]}
                                                         </TableCell>
                                                         <TableCell className="text-right py-2">
                                                             <Badge variant="outline" className={`

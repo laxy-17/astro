@@ -1,13 +1,13 @@
 # Project 8Stro - Vedic Astrology App (MVP)
 
-**Version**: 1.0.1 (Baseline v1)
+**Version**: 1.1.0
 **Date**: January 4, 2026
-**Status**: Release Candidate (v1) - *Security Hardened & AI Mentor Refined*
+**Status**: Feature Complete (v1.1) - *PDF Export & UI Polish*
 
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
 
-Recent major updates (Baseline v1) include a comprehensive **Security Hardening** (input validation, rate limiting preparation, Git secret protection), a refined **AI Vedic Mentor** layout (Violet/Orange themes, bulleted forecasts, MM/DD/YYYY formatting), and optimized **Hora Quality** logic based on Day Lord relationships.
+Recent major updates (v1.1.0) include a robust **PDF Export** feature (client-side generation with print optimization), a comprehensive **UI Polish** pass (standardized icons, improved Hora timelines with active highlighting, toast notifications), and a finalized Glossary integration.
 
 ## 2. Technology Stack
 

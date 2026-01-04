@@ -3,7 +3,7 @@ import type { DailyMentorResponse, BirthDetails } from '../api/client';
 import { getDailyMentor } from '../api/client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface Props {
     birthDetails: BirthDetails;
@@ -46,6 +46,7 @@ export const DailyMentor: React.FC<Props> = ({ birthDetails }) => {
 
 // Sub-components
 
+
 const Header: React.FC<{ date: string }> = ({ date }) => (
     <div className="px-1">
         <h1 className="text-2xl font-bold text-neutral-500">Your Day</h1>
@@ -64,7 +65,7 @@ const DailyFocusCard: React.FC<{ data: DailyMentorResponse }> = ({ data }) => {
             <CardContent className="p-6 space-y-6 relative z-10">
                 <div className="space-y-1">
                     <h3 className="text-sm font-semibold text-skyblue-600 uppercase tracking-wider">Today's Vibe</h3>
-                    <p className="text-2xl font-serif italic text-neutral-500 leading-tight">{energy.vibe}</p>
+                    <p className="text-2xl font-bold italic text-neutral-600 leading-tight">{energy.vibe}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -94,9 +95,24 @@ const EmptyState = () => (
 );
 
 const LoadingState = () => (
-    <div className="flex flex-col items-center justify-center p-12 h-[50vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-violet-500 mb-4" />
-        <p className="text-muted-foreground animate-pulse">Consulting the Stars...</p>
+    <div className="space-y-6">
+        <div className="px-1 space-y-2">
+            <div className="h-8 w-48 skeleton" />
+            <div className="h-4 w-64 skeleton" />
+        </div>
+        <Card className="glass-panel border-skyblue-200/50 bg-white shadow-sm overflow-hidden">
+            <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                    <div className="h-4 w-24 skeleton" />
+                    <div className="h-8 w-full skeleton" />
+                </div>
+                <div className="space-y-2">
+                    <div className="h-4 w-24 skeleton" />
+                    <div className="h-6 w-3/4 skeleton" />
+                </div>
+                <div className="h-8 w-32 skeleton" />
+            </CardContent>
+        </Card>
     </div>
 );
 

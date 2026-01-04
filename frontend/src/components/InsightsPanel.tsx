@@ -13,10 +13,28 @@ interface Props {
 export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights, loading }) => {
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
-                <div className="text-4xl mb-2 animate-bounce">🔮</div>
-                <div className="text-sm font-medium">Connecting to Cosmic Consciousness...</div>
-            </div>
+            <Card className="glass-panel border-border bg-card/50 overflow-hidden">
+                <div className="h-14 bg-skyblue-100/30 border-b border-border flex items-center px-6">
+                    <div className="h-6 w-32 skeleton" />
+                </div>
+                <CardContent className="p-6 space-y-8">
+                    {/* Forecast Skeleton */}
+                    <div className="border border-skyblue-100 rounded-xl bg-skyblue-50/10 h-32 skeleton" />
+
+                    {/* Grid Skeletons */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="h-40 skeleton" />
+                        <div className="h-40 skeleton" />
+                        <div className="h-40 skeleton" />
+                    </div>
+
+                    {/* Checkboxes Skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="h-32 skeleton" />
+                        <div className="h-32 skeleton" />
+                    </div>
+                </CardContent>
+            </Card>
         );
     }
 
@@ -26,29 +44,51 @@ export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights
 
     // Helper to format forecast into bullets
     const renderForecastBullets = (text: string) => {
-        // Split by emoji markers or common section starts
-        const sections = text.split(/(?=[✨💰🤝⚠️🌟🗓️🔮⚖️🎨])/g).filter(s => s.trim().length > 0);
+        // Separate Quick Reference if it exists
+        const [mainForecast, quickRef] = text.split(/🎨 Quick Reference/i);
 
-        if (sections.length <= 1) {
-            return <p className="text-purple-950/80 leading-relaxed text-[15px]">{text}</p>;
-        }
+        const sections = mainForecast.split(/(?=[✨🌟💰🤝⚠️🗓️🔮⚖️])/g).filter(s => s.trim().length > 0);
 
         return (
-            <ul className="space-y-4">
-                {sections.map((sec, idx) => {
-                    // Strip emojis, corrupted chars, and leading markers
-                    // IMPORTANT: trim first to remove whitespace that might be hiding the bad chars
-                    const cleanText = sec.trim().replace(/^[^a-zA-Z0-9\s]+/, '').trim();
-                    if (!cleanText) return null;
+            <div className="space-y-6">
+                <ul className="space-y-4">
+                    {sections.map((sec, idx) => {
+                        const cleanText = sec.trim().replace(/^[^a-zA-Z0-9\s]+/, '').trim();
+                        if (!cleanText) return null;
 
-                    return (
-                        <li key={idx} className="flex gap-3 text-[15px] leading-relaxed text-purple-900/90 items-start">
-                            <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
-                            <span className="flex-1 font-medium">{cleanText}</span>
-                        </li>
-                    );
-                })}
-            </ul>
+                        return (
+                            <li key={idx} className="flex gap-3 text-[15px] leading-relaxed text-purple-900/90 items-start">
+                                <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                                <span className="flex-1 font-medium">{cleanText}</span>
+                            </li>
+                        );
+                    })}
+                </ul>
+
+                {quickRef && (
+                    <div className="pt-4 border-t border-purple-200/50">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px flex-1 bg-purple-200" />
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-purple-400">Quick Reference</span>
+                            <div className="h-px flex-1 bg-purple-200" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {quickRef.split('\n')
+                                .filter(line => line.includes(':'))
+                                .map((line, idx) => {
+                                    const [label, val] = line.split(':').map(s => s.replace(/[\*\-\•]/g, '').trim());
+                                    if (!label || !val) return null;
+                                    return (
+                                        <div key={idx} className="bg-white/60 border border-purple-100 rounded-lg p-3 text-center shadow-sm">
+                                            <div className="text-[10px] text-purple-400 uppercase font-bold mb-1">{label}</div>
+                                            <div className="text-sm font-bold text-purple-700">{val}</div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                )}
+            </div>
         );
     };
 

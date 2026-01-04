@@ -1,0 +1,136 @@
+@media print {
+
+    /* Hide UI elements that shouldn't be printed */
+    header,
+    nav,
+    aside,
+    button,
+    .no-print,
+    [role="tablist"],
+    .fixed,
+    .absolute.right-0,
+    /* Often close buttons */
+    [aria-label="Daily Mentor"],
+    /* Tabs specifically if role selector fails */
+    .glass-panel {
+        box-shadow: none !important;
+        background: white !important;
+        border: 1px solid #ddd !important;
+    }
+
+    /* Reset body/layout for print */
+    body {
+        background: white !important;
+        color: black !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    #root {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* Force layout to be vertical flow */
+    .flex,
+    .grid {
+        display: block !important;
+    }
+
+    /* Exception for charts/tables that need grid/flex inside */
+    .print-grid {
+        display: grid !important;
+    }
+
+    .print-flex {
+        display: flex !important;
+    }
+
+    /* Reset Charts Layout */
+    .grid-cols-1,
+    .xl\:grid-cols-\[1\.5fr_1fr\] {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    /* Page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+
+    .avoid-break {
+        page-break-inside: avoid;
+    }
+
+    /* Typography improvements for print */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: #000 !important;
+        page-break-after: avoid;
+    }
+
+    p,
+    span,
+    div {
+        color: #1a1a1a !important;
+    }
+
+    /* Specific Component Tweaks */
+    /* Hide the sidebar completely */
+    aside {
+        display: none !important;
+    }
+
+    /* Expand main content to full width */
+    main {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Hide Tabs triggers but show content */
+    [role="tablist"] {
+        display: none !important;
+    }
+
+    /* Show all tab contents if we want to print everything? 
+     Usually we only print the ACTIVE tab content as that's what's in the DOM.
+     If we want to print ALL sections, we'd need to render them all hidden, then unhide for print.
+     For now, let's assume WYSIWYG - print what's seeing.
+  */
+
+    /* Chart Specifics */
+    svg {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Custom Print Header */
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #7c3aed;
+        padding-bottom: 1rem;
+    }
+
+    .print-header h1 {
+        font-size: 24px;
+        font-weight: bold;
+        color: #7c3aed !important;
+    }
+
+    .print-header p {
+        font-size: 12px;
+        color: #666 !important;
+    }
+}
+
+/* Hide print header on screen */
+.print-header {
+    display: none;
+}

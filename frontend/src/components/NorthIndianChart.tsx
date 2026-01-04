@@ -1,6 +1,8 @@
 import React from 'react';
 import type { PlanetPosition, House } from '../api/client';
 import { getPlanetShortName } from '../lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getTerm } from '../data/glossary';
 
 interface Props {
     planets: PlanetPosition[];
@@ -42,7 +44,11 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
     ];
 
     const getPlanetsInHouse = (houseNum: number) => {
-        return planets.filter(p => p.house === houseNum).map(p => getPlanetShortName(p.name));
+        return planets.filter(p => p.house === houseNum).map(p => ({
+            name: p.name,
+            short: getPlanetShortName(p.name),
+            isRetro: p.retrograde
+        }));
     };
 
     const getSignForHouse = (houseNum: number) => {
@@ -69,8 +75,7 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
                     {houseCenters.map((pos, i) => {
                         const houseNum = i + 1;
                         const planetsList = getPlanetsInHouse(houseNum);
-                        const sign = getSignForHouse(houseNum);
-
+                        // const isAscendantInSign = ascendantSign === ascendantSign; // Logic check below
                         return (
                             <g key={houseNum}>
                                 {/* Ascendant Marker (House 1) - Red Circle */}
@@ -83,7 +88,7 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
                                     x={pos.x}
                                     y={pos.y}
                                     planets={planetsList}
-                                    sign={sign}
+                                    sign={getSignForHouse(houseNum)}
                                     isAscendant={houseNum === 1}
                                 />
                             </g>
@@ -106,23 +111,50 @@ export const NorthIndianChart: React.FC<Props> = ({ planets, houses }) => {
     );
 };
 
-const HouseInfo: React.FC<{ x: number, y: number, planets: string[], sign: string, isAscendant: boolean }> = ({ x, y, planets, sign, isAscendant }) => (
-    <text x={x} y={y} textAnchor="middle" className="fill-neutral-500">
-        {/* Sign Name */}
-        <tspan x={x} dy="-14" fontSize="10" className="fill-neutral-400" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>{sign}</tspan>
+const HouseInfo: React.FC<{ x: number, y: number, planets: { name: string, short: string, isRetro: boolean }[], sign: string, isAscendant: boolean }> = ({ x, y, planets, sign, isAscendant }) => (
+    <foreignObject x={x - 45} y={y - 45} width="90" height="90" className="overflow-visible pointer-events-none">
+        <div className="flex flex-col items-center justify-center h-full w-full pointer-events-auto">
+            {/* Sign Name */}
+            <span className="text-[10px] uppercase tracking-[1.5px] font-bold text-neutral-300 mb-0.5 leading-none">
+                {sign}
+            </span>
 
-        {/* ASC Label if House 1 */}
-        {isAscendant && (
-            <tspan x={x} dy="14" className="fill-status-error" fontWeight="bold" fontSize="12">ASC</tspan>
-        )}
+            {/* ASC Label if House 1 */}
+            {isAscendant && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="text-[10px] font-black text-violet-500 cursor-help mb-0.5 leading-none hover:bg-violet-50 rounded px-0.5">
+                                ASC
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-violet-900 border-violet-700 text-white max-w-xs z-50">
+                            {getTerm('Lagna')?.definition}
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
 
-        {/* Planets */}
-        {planets.length > 0 && (
-            <tspan x={x} dy={isAscendant ? "14" : "16"} fontWeight="700" fontSize="13">
+            {/* Planets */}
+            <div className="flex flex-wrapjustify-center gap-0.5 items-center leading-none mt-0.5">
                 {planets.map((p, i) => (
-                    <tspan key={i} className="fill-neutral-500">{p} </tspan>
+                    <TooltipProvider key={i}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className={`text-[11px] font-bold cursor-help inline-flex items-center ${p.name === 'Rahu' || p.name === 'Ketu' ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                                    {p.short}
+                                    {p.isRetro && <span className="text-[8px] text-violet-400 ml-[1px]">®</span>}
+                                    {i < planets.length - 1 && <span className="mx-0.5 opacity-30"> </span>}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-violet-900 border-violet-700 text-white z-50">
+                                <p className="font-bold mb-1">{p.name} {p.isRetro ? '(Retrograde)' : ''}</p>
+                                {getTerm(p.name) && <p className="text-xs opacity-80">{getTerm(p.name)?.definition}</p>}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 ))}
-            </tspan>
-        )}
-    </text>
+            </div>
+        </div>
+    </foreignObject>
 );

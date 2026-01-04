@@ -58,7 +58,7 @@ export const Logo: React.FC<LogoProps> = ({
                 <span className={animated ? 'logo-symbol-animated' : 'logo-symbol'}>
                     {symbol}
                 </span>
-                <span className="logo-text">stro</span>
+                <span className="logo-text font-extrabold tracking-tighter">stro</span>
             </div>
 
             {withTagline && (

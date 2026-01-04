@@ -18,13 +18,15 @@ import type { LocationData } from '../api/client';
 
 import { DailyMentor } from './DailyMentor';
 import { UnifiedPanchanga } from './UnifiedPanchanga';
-import { MapPin } from 'lucide-react';
+
 
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, BookOpen, User, Save, FileText, Library } from "lucide-react"
+import { Sparkles, Save, FileText, Library, Compass, Layout, Layers, Orbit, MapPin, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { SimpleToast } from "@/components/ui/SimpleToast";
+import { PrintOptionsModal } from "@/components/PrintOptionsModal";
 
 interface PersistentFormProps {
     onSuccess: (data: ChartResponse, details: BirthDetails) => void;
@@ -118,26 +120,28 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
                     </div>
                 )}
 
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                    <input
-                        type="date"
-                        required
-                        value={details.date}
-                        onChange={(e) => handleChange('date', e.target.value)}
-                        className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30"
-                    />
-                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
+                        <input
+                            type="date"
+                            required
+                            value={details.date}
+                            onChange={(e) => handleChange('date', e.target.value)}
+                            className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30 text-sm"
+                        />
+                    </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</label>
-                    <input
-                        type="time"
-                        required
-                        value={details.time}
-                        onChange={(e) => handleChange('time', e.target.value)}
-                        className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30"
-                    />
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</label>
+                        <input
+                            type="time"
+                            required
+                            value={details.time}
+                            onChange={(e) => handleChange('time', e.target.value)}
+                            className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30 text-sm"
+                        />
+                    </div>
                 </div>
 
                 <div className="space-y-1">
@@ -153,7 +157,12 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
                         }}
                         onLocationChange={handleLocationSelect}
                     />
-                    <div className="flex gap-2 text-[10px] text-muted-foreground font-mono pt-1 px-1">
+                    {details.location_city && (
+                        <div className="text-[11px] font-medium text-violet-500 px-1 pt-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> {details.location_city}, {details.location_country}
+                        </div>
+                    )}
+                    <div className="flex gap-2 text-[10px] text-muted-foreground font-mono px-1">
                         <span>Lat: {details.latitude?.toFixed(4)}</span>
                         <span>Long: {details.longitude?.toFixed(4)}</span>
                     </div>
@@ -163,18 +172,20 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="flex-1 bg-skyblue-500 hover:bg-skyblue-600 text-white font-bold shadow-md shadow-skyblue-500/20"
+                        size="default"
+                        className="flex-1 bg-skyblue-500 hover:bg-skyblue-600 text-white font-bold shadow-md shadow-skyblue-500/20 h-10"
                     >
                         {loading ? 'Calculating...' : 'Calculate Chart'}
                     </Button>
                     <Button
                         type="button"
                         variant="secondary"
+                        size="icon"
                         onClick={handleReset}
-                        className="bg-skyblue-50 hover:bg-skyblue-100 text-skyblue-600 border border-skyblue-200"
+                        className="bg-skyblue-50 hover:bg-skyblue-100 text-skyblue-600 border border-skyblue-200 h-10 w-10 min-w-[40px]"
                         title="Reset Form"
                     >
-                        ↺
+                        <RotateCcw className="w-4 h-4" />
                     </Button>
                 </div>
             </form>
@@ -197,17 +208,49 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
     // Main Tabs State
     const [activeTab, setActiveTab] = useState<'charts' | 'unified-panchang' | 'dashas' | 'transits' | 'mentor'>('mentor');
 
+    // Sub-states for Charts Tab
+    const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
+
+    const [showLibrary, setShowLibrary] = useState(false);
+
+    // Toast State
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+
+    // Print State
+    const [showPrintModal, setShowPrintModal] = useState(false);
+    const [printSections, setPrintSections] = useState<string[]>([]);
+    const [isPrintPreview, setIsPrintPreview] = useState(false);
+
+    const showToast = (msg: string) => {
+        setToastMessage(msg);
+        setToastVisible(true);
+    };
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.altKey) {
+                switch (e.key) {
+                    case '1': setActiveTab('mentor'); break;
+                    case '2': setActiveTab('unified-panchang'); break;
+                    case '3': setActiveTab('charts'); break;
+                    case '4': setActiveTab('dashas'); break;
+                    case '5': setActiveTab('transits'); break;
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     // Sync activeView prop with activeTab state
     useEffect(() => {
         if (activeView === 'panchang') {
             setActiveTab('unified-panchang');
         }
     }, [activeView]);
-
-    // Sub-states for Charts Tab
-    const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
-
-    const [showLibrary, setShowLibrary] = useState(false);
 
     // Insights State
     const [prediction, setPrediction] = useState<string | null>(null);
@@ -287,15 +330,16 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
 
     const handleSaveChart = async () => {
         if (!currentDetails) return;
+
         const name = prompt("Enter a name for this chart:");
         if (!name) return;
 
         try {
-            const result = await saveChart(name, currentDetails);
-            alert(result.message || "Chart saved!");
-        } catch (e: any) {
-            console.error("Save failed:", e);
-            alert(`Failed to save chart: ${e.message || "Unknown error"}`);
+            await saveChart(name, currentDetails);
+            showToast(`Chart "${name}" saved to library successfully!`);
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to save chart. Please try again.');
         }
     };
 
@@ -314,14 +358,23 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
         }
     };
 
-    const handleDownloadPDF = async () => {
-        if (!chartData || !currentDetails) return;
-        try {
-            await generatePDF(chartData, currentDetails, coreInsights);
-        } catch (e) {
-            console.error("PDF Generation failed", e);
-            alert("Failed to generate PDF");
+    const handleDownloadPDF = () => {
+        if (!currentDetails || !chartData) {
+            showToast("Please calculate a chart first");
+            return;
         }
+        setShowPrintModal(true);
+    };
+
+    const handlePrintConfirm = (sections: string[]) => {
+        setPrintSections(sections);
+        setIsPrintPreview(true); // Switch to preview mode
+        // Small delay to allow render, then print could be auto-triggered or manual
+    };
+
+    const closePrintPreview = () => {
+        setIsPrintPreview(false);
+        setPrintSections([]);
     };
 
     return (
@@ -329,7 +382,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
             {/* Top Header */}
             <header className="flex items-center justify-between p-4 border-b border-skyblue-200/50 bg-skyblue-100/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="flex items-center gap-3">
-                    <Logo size="small" animated={true} />
+                    <Logo size="small" animated={true} withTagline={true} tagline="precision" />
                     {currentDetails && (
                         <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/40 rounded-lg border border-skyblue-200/30">
                             <span className="text-xs text-neutral-400 uppercase tracking-wider">Current Chart</span>
@@ -360,25 +413,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
             <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-6 max-w-[1920px] mx-auto">
                 {/* Sidebar */}
                 <aside className="space-y-6">
-                    {/* Navigation Card */}
-                    <Card className="glass-panel border-border bg-card/50">
-                        <CardContent className="p-4 space-y-2">
-                            <Button
-                                variant={activeTab === 'mentor' ? 'secondary' : 'ghost'}
-                                className="w-full justify-start text-sky-700 hover:text-sky-800 hover:bg-sky-50"
-                                onClick={() => setActiveTab('mentor')}
-                            >
-                                <Sparkles className="w-4 h-4 mr-2" /> Daily Mentor
-                            </Button>
-                            <Button
-                                variant={activeTab === 'unified-panchang' ? 'secondary' : 'ghost'}
-                                className="w-full justify-start text-violet-700 hover:text-violet-800 hover:bg-violet-50"
-                                onClick={() => setActiveTab('unified-panchang')}
-                            >
-                                <MapPin className="w-4 h-4 mr-2" /> Panchang
-                            </Button>
-                        </CardContent>
-                    </Card>
+
 
                     <Card className="glass-panel border-border bg-card/50">
                         <CardContent className="p-6">
@@ -405,26 +440,27 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                 <main className="space-y-6">
 
 
-                    {/* Tabs Navigation */}
                     <Tabs defaultValue="mentor" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-7 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm">
-                            <TabsTrigger value="mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all hidden md:flex">
+                        <TabsList className="grid w-full grid-cols-5 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm mb-6">
+                            <TabsTrigger value="mentor" aria-label="Daily Mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
                                 <Sparkles className="w-4 h-4 mr-2" />
-                                Mentor
+                                <span className="hidden sm:inline">Mentor</span>
                             </TabsTrigger>
-                            <TabsTrigger value="unified-panchang" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
-                                <MapPin className="w-4 h-4 mr-2" />
-                                Panchang
+                            <TabsTrigger value="unified-panchang" aria-label="Panchang" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                                <Compass className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Panchang</span>
                             </TabsTrigger>
-                            <TabsTrigger value="charts" className="data-[state=active]:bg-violet-400 data-[state=active]:text-white rounded-lg transition-all">
-                                <User className="w-4 h-4 mr-2" /> Charts
+                            <TabsTrigger value="charts" aria-label="Birth Charts" className="data-[state=active]:bg-violet-400 data-[state=active]:text-white rounded-lg transition-all">
+                                <Layout className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Charts</span>
                             </TabsTrigger>
-                            <TabsTrigger value="dashas" className="data-[state=active]:bg-skyblue-400 data-[state=active]:text-white rounded-lg transition-all">
-                                <BookOpen className="w-4 h-4 mr-2" /> Dashas
+                            <TabsTrigger value="dashas" aria-label="Dasha Periods" className="data-[state=active]:bg-skyblue-400 data-[state=active]:text-white rounded-lg transition-all">
+                                <Layers className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Dashas</span>
                             </TabsTrigger>
-                            <TabsTrigger value="transits" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white rounded-lg transition-all">
-                                <div className="w-4 h-4 mr-2">🪐</div>
-                                Transits
+                            <TabsTrigger value="transits" aria-label="Planetary Transits" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white rounded-lg transition-all">
+                                <Orbit className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Transits</span>
                             </TabsTrigger>
                         </TabsList>
 
@@ -467,6 +503,27 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                             {(
                                 <div className="space-y-6">
                                     {currentDetails && <BirthParticulars details={currentDetails} />}
+
+                                    <div className="flex gap-2 relative z-10">
+                                        <Button
+                                            variant="glass"
+                                            size="sm"
+                                            className="gap-2 text-primary hover:bg-white/20"
+                                            onClick={handleDownloadPDF}
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            Export PDF
+                                        </Button>
+                                        <Button
+                                            variant="glass"
+                                            size="sm"
+                                            className="gap-2 text-primary hover:bg-white/20"
+                                            onClick={() => setShowLibrary(true)}
+                                        >
+                                            <Library className="w-4 h-4" />
+                                            Library
+                                        </Button>
+                                    </div>
 
                                     <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
                                         {/* Chart Visualization */}
@@ -581,7 +638,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
             {/* Library Modal */}
             {
                 showLibrary && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-500/40 backdrop-blur-sm p-4">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-500/40 backdrop-blur-sm p-4 print:hidden">
                         <div className="w-full max-w-2xl bg-white border border-skyblue-200/50 rounded-xl shadow-[0_10px_40px_rgba(91,163,208,0.15)] relative overflow-hidden">
 
                             <ChartLibrary
@@ -595,6 +652,110 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                     </div>
                 )
             }
+
+            <PrintOptionsModal
+                isOpen={showPrintModal}
+                onClose={() => setShowPrintModal(false)}
+                onPrint={handlePrintConfirm}
+            />
+
+            {/* Print Preview Overlay - Renders selected sections linearly */}
+            {isPrintPreview && (
+                <div className="fixed inset-0 z-[200] bg-white overflow-auto print:static key-print-view">
+                    {/* Print Preview Header (Screen Only) */}
+                    <div className="sticky top-0 p-4 bg-white/90 backdrop-blur border-b border-border flex justify-between items-center no-print z-50 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-bold text-violet-700">Print Preview</h2>
+                            <span className="text-sm text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded">
+                                {printSections.length} sections selected
+                            </span>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" onClick={closePrintPreview}>Back to Dashboard</Button>
+                            <Button onClick={() => window.print()} className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
+                                <FileText className="w-4 h-4" /> Print / Save as PDF
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Actual Printable Content */}
+                    <div className="max-w-4xl mx-auto p-8 space-y-8 bg-white min-h-screen">
+
+                        {/* Report Header */}
+                        <div className="text-center border-b-2 border-violet-500 pb-6 mb-8">
+                            <h1 className="text-4xl font-bold text-violet-800 mb-2">Vedic Astrology Report</h1>
+                            <div className="text-lg text-neutral-600">
+                                Prepared for <span className="font-bold text-black">{currentDetails?.name || 'User'}</span>
+                            </div>
+                            <div className="text-sm text-neutral-400 mt-2">
+                                {currentDetails?.date} at {currentDetails?.time} • {currentDetails?.location_city || 'Unknown Location'}
+                            </div>
+                        </div>
+
+                        {/* Sections */}
+                        {printSections.includes('charts') && chartData && (
+                            <section className="space-y-4 break-inside-avoid">
+                                <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Birth Charts</h2>
+                                <div className="grid grid-cols-2 gap-8 print-grid">
+                                    <div className="space-y-2">
+                                        <h3 className="text-center font-bold text-neutral-500">South Indian</h3>
+                                        <div className="border border-neutral-200 rounded-lg p-2">
+                                            <SouthIndianChart planets={chartData.planets} ascendantSign={chartData.ascendant_sign} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h3 className="text-center font-bold text-neutral-500">North Indian</h3>
+                                        <div className="border border-neutral-200 rounded-lg p-2 aspect-square flex items-center bg-white">
+                                            <NorthIndianChart planets={chartData.planets} houses={chartData.houses} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {printSections.includes('planetary') && chartData && currentDetails && (
+                            <section className="space-y-4 break-inside-avoid">
+                                <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Planetary Details</h2>
+                                <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                                    <PlanetaryTable
+                                        planets={chartData.planets}
+                                        ascendant={{ sign: chartData.ascendant_sign, degree: chartData.ascendant, house: 1 }}
+                                    />
+                                </div>
+                            </section>
+                        )}
+
+                        {printSections.includes('panchanga') && currentDetails && (
+                            <section className="space-y-4 break-inside-avoid">
+                                <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Unified Panchang</h2>
+                                <UnifiedPanchanga birthDetails={currentDetails} />
+                            </section>
+                        )}
+
+                        {printSections.includes('dashas') && chartData && currentDetails && (
+                            <section className="space-y-4">
+                                <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Vimshottari Dasha Periods</h2>
+                                <DashaTab dashas={chartData.dashas} strengths={chartData.strengths} birthDate={currentDetails.date} />
+                            </section>
+                        )}
+
+                        {printSections.includes('mentor') && currentDetails && (
+                            <section className="space-y-4 break-inside-avoid">
+                                <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Daily Guidance</h2>
+                                <DailyMentor birthDetails={currentDetails} />
+                            </section>
+                        )}
+
+                    </div>
+                </div>
+            )}
+
+            {/* Simple Toast Notification */}
+            <SimpleToast
+                message={toastMessage}
+                isVisible={toastVisible}
+                onClose={() => setToastVisible(false)}
+            />
         </div >
     );
 };
