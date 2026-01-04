@@ -29,10 +29,9 @@ try:
         connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
         pool_pre_ping=True # Efficiently handle dropped connections
     )
-    logger.info(f"Database engine initialized for: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'SQLite'}")
 except Exception as e:
-    logger.error(f"Failed to initialize database engine: {e}")
     raise
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

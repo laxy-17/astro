@@ -100,7 +100,7 @@ if not os.path.exists(EPHEME_PATH):
         f"https://www.astro.com/ftp/swisseph/"
     )
 
-required_files = ['sun.se1', 'moon.se1', 'merc.se1', 'venus.se1', 'mars.se1']
+required_files = ['seas_18.se1', 'semo_18.se1', 'sepl_18.se1']
 missing = [f for f in required_files if not os.path.exists(os.path.join(EPHEME_PATH, f))]
 if missing:
     logger.warning(

@@ -152,7 +152,6 @@ def create_chart(details: BirthDetails):
         )
 
 @app.get("/insights/daily", tags=["Insights"])
-@app.get("/insights/daily", tags=["Insights"])
 def get_daily_insight(sign_id: int, date: str):
     """
     Get AI-generated daily prediction formatted beautifully.
