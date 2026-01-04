@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ChartResponse, BirthDetails, CoreInsights } from '../api/client';
 import { calculateChart, getDailyInsight, getDoshaReport, generateCoreInsights, saveChart } from '../api/client';
+import { Logo } from './Logo';
 import { ControlPanel } from './ControlPanel';
 import { SouthIndianChart } from './SouthIndianChart';
 import { NorthIndianChart } from './NorthIndianChart';
@@ -13,11 +14,13 @@ import { BirthParticulars } from './BirthParticulars';
 import { PanchangaPanel } from './PanchangaPanel';
 import { TransitsTab } from './TransitsTab';
 import { InsightsPanel } from './InsightsPanel';
-import type { LocationDetails } from './LocationSearchInput';
-import { LocationSearchInput } from './LocationSearchInput';
+import { LocationSelector } from './LocationSelector';
+import type { LocationData } from '../api/client';
 
 import { DailyMentor } from './DailyMentor';
 import { TodaysTimings } from './TodaysTimings';
+import { DailyPanchangaDashboard } from './DailyPanchangaDashboard';
+import { MapPin } from 'lucide-react';
 
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
@@ -68,13 +71,13 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
         localStorage.setItem('last_birth_details', JSON.stringify(newDetails));
     };
 
-    const handleLocationSelect = (loc: LocationDetails) => {
+    const handleLocationSelect = (loc: LocationData) => {
         const newDetails = {
             ...details,
             latitude: loc.latitude,
             longitude: loc.longitude,
             location_city: loc.city,
-            location_state: loc.state,
+            location_state: loc.region, // LocationData uses 'region'
             location_country: loc.country,
             location_timezone: loc.timezone
         };
@@ -141,10 +144,16 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
 
                 <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</label>
-                    <LocationSearchInput
-                        onLocationSelect={handleLocationSelect}
-                        placeholder="Search City (e.g. Mumbai, New York)..."
-                        value={details.location_city ? `${details.location_city}, ${details.location_country || ''}` : ''}
+                    <LocationSelector
+                        currentLocation={{
+                            city: details.location_city || '',
+                            region: details.location_state,
+                            country: details.location_country || '',
+                            latitude: details.latitude,
+                            longitude: details.longitude,
+                            timezone: details.location_timezone || 'UTC'
+                        }}
+                        onLocationChange={handleLocationSelect}
                     />
                     <div className="flex gap-2 text-[10px] text-muted-foreground font-mono pt-1 px-1">
                         <span>Lat: {details.latitude?.toFixed(4)}</span>
@@ -176,17 +185,26 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
 };
 
 interface Props {
-    chartData: ChartResponse | null;
-    onCalculate: (data: ChartResponse, details: BirthDetails) => void;
+    initialData: ChartResponse | null;
+    initialDetails: BirthDetails | null;
+    activeView?: string;
 }
 
-export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
-    const [currentDetails, setCurrentDetails] = useState<BirthDetails | null>(null);
+export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, activeView = 'dashboard' }) => {
+    const [chartData, setChartData] = useState<ChartResponse | null>(initialData);
+    const [currentDetails, setCurrentDetails] = useState<BirthDetails | null>(initialDetails);
     const [chartStyle, setChartStyle] = useState<'south' | 'north'>('south');
-    const [ayanamsa, setAyanamsa] = useState<string>('LAHIRI');
+    const [ayanamsa, setAyanamsa] = useState<string>(initialDetails?.ayanamsa_mode || 'LAHIRI');
 
     // Main Tabs State
-    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor' | 'timings'>('mentor');
+    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor' | 'timings' | 'daily-panchanga'>('mentor');
+
+    // Sync activeView prop with activeTab state
+    useEffect(() => {
+        if (activeView === 'panchang') {
+            setActiveTab('daily-panchanga');
+        }
+    }, [activeView]);
 
     // Sub-states for Charts Tab
     const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
@@ -253,7 +271,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                 const newDetails = { ...currentDetails, ayanamsa_mode: newMode };
                 const data = await calculateChart(newDetails);
                 setCurrentDetails(newDetails);
-                onCalculate(data, newDetails);
+                setChartData(data);
                 fetchInsights(data, newDetails);
             } catch (e) {
                 console.error("Recalculation failed", e);
@@ -263,7 +281,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
 
     const handleChartCalculated = (data: ChartResponse, details: BirthDetails) => {
         setCurrentDetails(details);
-        onCalculate(data, details);
+        setChartData(data);
         fetchInsights(data, details);
     };
 
@@ -287,7 +305,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
             setAyanamsa(details.ayanamsa_mode || 'LAHIRI');
 
             const data = await calculateChart(details);
-            onCalculate(data, details);
+            setChartData(data);
             fetchInsights(data, details);
             localStorage.setItem('last_birth_details', JSON.stringify(details));
         } catch (e) {
@@ -311,12 +329,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
             {/* Top Header */}
             <header className="flex items-center justify-between p-4 border-b border-skyblue-200/50 bg-skyblue-100/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-400 to-skyblue-500 flex items-center justify-center shadow-[0_2px_8px_rgba(139,122,184,0.3)]">
-                        <span className="text-white font-bold text-lg">8</span>
-                    </div>
-                    <span className="text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-skyblue-600">
-                        8STRO
-                    </span>
+                    <Logo size="small" animated={true} />
                     {currentDetails && (
                         <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/40 rounded-lg border border-skyblue-200/30">
                             <span className="text-xs text-neutral-400 uppercase tracking-wider">Current Chart</span>
@@ -347,6 +360,26 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
             <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-6 max-w-[1920px] mx-auto">
                 {/* Sidebar */}
                 <aside className="space-y-6">
+                    {/* Navigation Card */}
+                    <Card className="glass-panel border-border bg-card/50">
+                        <CardContent className="p-4 space-y-2">
+                            <Button
+                                variant={activeTab === 'mentor' ? 'secondary' : 'ghost'}
+                                className="w-full justify-start text-sky-700 hover:text-sky-800 hover:bg-sky-50"
+                                onClick={() => setActiveTab('mentor')}
+                            >
+                                <Sparkles className="w-4 h-4 mr-2" /> Daily Mentor
+                            </Button>
+                            <Button
+                                variant={activeTab === 'daily-panchanga' ? 'secondary' : 'ghost'}
+                                className="w-full justify-start text-violet-700 hover:text-violet-800 hover:bg-violet-50"
+                                onClick={() => setActiveTab('daily-panchanga')}
+                            >
+                                <MapPin className="w-4 h-4 mr-2" /> Local Panchang
+                            </Button>
+                        </CardContent>
+                    </Card>
+
                     <Card className="glass-panel border-border bg-card/50">
                         <CardContent className="p-6">
                             <PersistentForm
@@ -374,10 +407,14 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
 
                     {/* Tabs Navigation */}
                     <Tabs defaultValue="mentor" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-6 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm">
-                            <TabsTrigger value="mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                        <TabsList className="grid w-full grid-cols-7 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm">
+                            <TabsTrigger value="mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all hidden md:flex">
                                 <Sparkles className="w-4 h-4 mr-2" />
                                 Mentor
+                            </TabsTrigger>
+                            <TabsTrigger value="daily-panchanga" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                                <MapPin className="w-4 h-4 mr-2" />
+                                Panchang
                             </TabsTrigger>
                             <TabsTrigger value="timings" className="data-[state=active]:bg-skyblue-500 data-[state=active]:text-white rounded-lg transition-all">
                                 <Clock className="w-4 h-4 mr-2" />
@@ -556,6 +593,13 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                 <Card className="glass-panel p-6 bg-card/40">
                                     <TransitsTab />
                                 </Card>
+                            )}
+                        </TabsContent>
+
+                        {/* TAB 5: DAILY PANCHANGA */}
+                        <TabsContent value="daily-panchanga" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'daily-panchanga' && (
+                                <DailyPanchangaDashboard />
                             )}
                         </TabsContent>
 

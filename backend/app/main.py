@@ -6,11 +6,13 @@ from dotenv import load_dotenv
 
 # Load environment variables first
 load_dotenv()
-from .models import BirthDetails, ChartResponse, PlanetPosition, House, Panchanga
-from .engine import calculate_chart, get_current_transits
+from .models import BirthDetails, ChartResponse, PlanetPosition, House, Panchanga, DailyPanchangaRequest, DailyPanchangaResponse
+from .engine import calculate_chart, get_current_transits, calculate_daily_panchanga_extended, calculate_auspicious_timings_extended, get_hindu_calendar_info, get_planetary_positions_small
 from .database import init_db, save_chart, list_charts, delete_chart, SavedChart
 from .integrations.vedic_astro_api import VedicAstroService
+from .utils.timezone_helper import get_local_datetime, get_sunrise_sunset, get_timezone_for_coordinates
 import logging
+import requests
 import os
 from .routes import auth, daily
 
@@ -99,8 +101,76 @@ def generate_insights(details: BirthDetails):
             "insights": insights
         }
     except Exception as e:
-        logger.error(f"Insight Generation error: {e}")
+        logger.error(f"Insights error: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate insights")
+
+@app.post("/api/daily-panchanga", tags=["Panchanga"], response_model=DailyPanchangaResponse)
+async def get_daily_panchanga(request: DailyPanchangaRequest):
+    """
+    Calculate daily Panchanga for given location and date.
+    If date is not provided, uses current local date.
+    """
+    try:
+        # 1. Determine local date for location
+        if request.date:
+            target_date = request.date
+        else:
+            local_dt = get_local_datetime(request.latitude, request.longitude)
+            target_date = local_dt.date()
+        
+        # 2. Calculate sunrise/sunset
+        sunrise, sunset = get_sunrise_sunset(
+            request.latitude,
+            request.longitude,
+            target_date
+        )
+        
+        # 3. Calculate Panchanga for sunrise time
+        panchanga_data = calculate_daily_panchanga_extended(
+            date_val=target_date,
+            time_val=sunrise.time(),
+            latitude=request.latitude,
+            longitude=request.longitude,
+            ayanamsa_mode=request.ayanamsa_mode
+        )
+        
+        # 4. Calculate auspicious timings
+        auspicious_timings = calculate_auspicious_timings_extended(
+            sunrise, sunset, request.latitude, request.longitude
+        )
+        
+        # 5. Get Hindu calendar info
+        hindu_calendar = get_hindu_calendar_info(target_date, panchanga_data)
+        
+        # 6. Planet positions
+        # Use Julian Day for sunrise
+        import swisseph as swe
+        jd_sunrise = swe.julday(sunrise.year, sunrise.month, sunrise.day, sunrise.hour + sunrise.minute/60.0 + sunrise.second/3600.0)
+        planetary_positions = get_planetary_positions_small(jd_sunrise, request.ayanamsa_mode)
+        
+        return DailyPanchangaResponse(
+            location={
+                "latitude": request.latitude,
+                "longitude": request.longitude,
+                "timezone": get_timezone_for_coordinates(request.latitude, request.longitude),
+                "city": request.city or "Unknown"
+            },
+            date={
+                "gregorian": target_date.isoformat(),
+                "day_of_week": target_date.strftime("%A"),
+                "sunrise": sunrise.strftime("%H:%M:%S"),
+                "sunset": sunset.strftime("%H:%M:%S"),
+                "day_length": str(sunset - sunrise)
+            },
+            panchanga=panchanga_data,
+            hindu_calendar=hindu_calendar,
+            auspicious_timings=auspicious_timings,
+            planetary_positions=planetary_positions
+        )
+        
+    except Exception as e:
+        logger.error(f"Daily Panchanga error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Enable CORS for frontend development and production
 # Configure allowed origins from environment variable or default to localhost
@@ -303,6 +373,98 @@ async def serve_frontend(full_path: str):
         
     # 3. Fallback if static folder missing (Local Dev)
     return {"message": "Frontend not built or static folder missing. Run via Docker or check path."}
+
+@app.get("/api/locations/search", tags=["Locations"])
+def search_locations(query: str, limit: int = 5):
+    """
+    Search for locations using OpenStreetMap Nominatim (Free, No Key).
+    """
+    try:
+        if not query or len(query) < 2:
+            return {"results": []}
+            
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": query,
+            "format": "json",
+            "limit": limit,
+            "addressdetails": 1,
+            "featuretype": "settlement" # Prioritize cities
+        }
+        headers = {
+            "User-Agent": "8StroVedicApp/1.0"
+        }
+        
+        response = requests.get(url, params=params, headers=headers)
+        if hasattr(response, "json"):
+             data = response.json()
+        else:
+             return {"results": []}
+        
+        results = []
+        for item in data:
+            display_name = item.get("display_name", "")
+            parts = display_name.split(",")
+            main_text = parts[0].strip()
+            secondary_text = ", ".join([p.strip() for p in parts[1:]])
+            
+            results.append({
+                "place_id": str(item.get("place_id")),
+                "description": display_name,
+                "main_text": main_text,
+                "secondary_text": secondary_text
+            })
+            
+        return {"results": results}
+        
+    except Exception as e:
+        logger.error(f"Location search error: {e}")
+        return {"results": []}
+
+@app.get("/api/locations/details/{place_id}", tags=["Locations"])
+def get_location_details(place_id: str):
+    """
+    Get full details for a location explicitly. 
+    """
+    try:
+        url = "https://nominatim.openstreetmap.org/details"
+        params = {
+            "place_id": place_id,
+            "format": "json",
+            "addressdetails": 1
+        }
+        headers = {
+            "User-Agent": "8StroVedicApp/1.0"
+        }
+        
+        response = requests.get(url, params=params, headers=headers)
+        data = response.json()
+        
+        # Extract timezone
+        lat = float(data.get("lat", 0))
+        lon = float(data.get("lon", 0))
+        tz_name = get_timezone_for_coordinates(lat, lon)
+        
+        address = data.get("address", {})
+        city = address.get("city") or address.get("town") or address.get("village") or data.get("name") or "Unknown"
+        state = address.get("state") or address.get("region") or ""
+        country = address.get("country") or ""
+        
+        return {
+            "place_id": str(data.get("place_id", place_id)),
+            "name": city,
+            "formatted_address": f"{city}, {state}, {country}".replace(", ,", ","),
+            "latitude": lat,
+            "longitude": lon,
+            "city": city,
+            "state": state,
+            "country": country,
+            "timezone": tz_name
+        }
+        
+    except Exception as e:
+        logger.error(f"Location details error: {e}")
+        raise HTTPException(status_code=404, detail="Location not found")
 
 if __name__ == "__main__":
     import uvicorn

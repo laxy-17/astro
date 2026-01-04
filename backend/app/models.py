@@ -146,3 +146,101 @@ class DailyTimeline(BaseModel):
     horas: List[Hora]
 
 
+
+# --- DAILY PANCHANGA MODELS ---
+class DailyPanchangaRequest(BaseModel):
+    latitude: float
+    longitude: float
+    date: Optional[date] = None  # If None, uses current local date
+    city: Optional[str] = None
+    ayanamsa_mode: str = "LAHIRI"
+
+class LocationInfo(BaseModel):
+    latitude: float
+    longitude: float
+    timezone: str
+    city: str
+
+class DateInfo(BaseModel):
+    gregorian: str
+    day_of_week: str
+    sunrise: str
+    sunset: str
+    day_length: str
+
+class TithiDataExtended(BaseModel):
+    name: str
+    number: int
+    paksha: str
+    completion: float
+    end_time: str
+
+class NakshatraDataExtended(BaseModel):
+    name: str
+    number: int
+    pada: int
+    lord: str
+    completion: float
+    end_time: str
+
+class YogaDataExtended(BaseModel):
+    name: str
+    number: int
+    end_time: str
+
+class KaranaDataExtended(BaseModel):
+    name: str
+    number: int
+    end_time: str
+
+class VaraData(BaseModel):
+    name: str
+    lord: str
+
+class PanchangaExtended(BaseModel):
+    tithi: TithiDataExtended
+    nakshatra: NakshatraDataExtended
+    yoga: YogaDataExtended
+    karana: KaranaDataExtended
+    vara: VaraData
+
+class HinduCalendar(BaseModel):
+    month: str
+    paksha: str
+    year: str
+    samvat: str
+
+class AuspiciousTiming(BaseModel):
+    start: str
+    end: str
+
+class AuspiciousTimings(BaseModel):
+    abhijit_muhurta: AuspiciousTiming
+    brahma_muhurta: AuspiciousTiming
+    rahu_kaal: AuspiciousTiming
+    gulika_kaal: Optional[AuspiciousTiming] = None
+    yamaganda_kaal: Optional[AuspiciousTiming] = None
+
+class PlanetaryPositionSmall(BaseModel):
+    sign: str
+    degree: float
+    nakshatra: str
+
+class DailyPanchangaResponse(BaseModel):
+    location: LocationInfo
+    date: DateInfo
+    panchanga: PanchangaExtended
+    hindu_calendar: HinduCalendar
+    auspicious_timings: AuspiciousTimings
+    planetary_positions: dict[str, PlanetaryPositionSmall]
+
+class LocationDetails(BaseModel):
+    place_id: str
+    name: str
+    formatted_address: str
+    latitude: float
+    longitude: float
+    city: str
+    state: str
+    country: str
+    timezone: str

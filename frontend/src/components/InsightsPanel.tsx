@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CoreInsights } from '../api/client';
 import { Card, CardContent } from "@/components/ui/card";
+import { Briefcase, Heart } from "lucide-react";
 
 interface Props {
     prediction: string | null;
@@ -94,10 +95,58 @@ export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights
                         </div>
                     </div>
                 )}
+
+                {/* Timing Strategy */}
+                <TimingStrategy />
             </CardContent>
         </Card>
     );
 };
+
+const TimingStrategy: React.FC = () => (
+    <div className="space-y-4 pt-4 border-t border-white/10">
+        <h3 className="text-lg font-semibold text-white/80 px-1 flex items-center gap-2">
+            <span>⏱️</span> Strategic Timing
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Career Card */}
+            <div className="p-4 rounded-lg bg-white/5 border border-skyblue-200/20 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-full bg-skyblue-500/20 text-skyblue-300">
+                        <Briefcase className="w-4 h-4" />
+                    </div>
+                    <span className="font-semibold text-sky-100">Career & Work</span>
+                </div>
+                <div className="space-y-2 text-sm pl-11">
+                    <div className="flex gap-2">
+                        <span className="text-emerald-400 font-bold min-w-[3rem]">Do:</span>
+                        <span className="text-slate-300">Schedule meetings during Sun Hora</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="text-rose-400 font-bold min-w-[3rem]">Don't:</span>
+                        <span className="text-slate-300">Sign contracts during Rahu Kalam</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Relationships Card */}
+            <div className="p-4 rounded-lg bg-white/5 border border-violet-200/20 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-full bg-violet-500/20 text-violet-300">
+                        <Heart className="w-4 h-4" />
+                    </div>
+                    <span className="font-semibold text-violet-100">Relationships</span>
+                </div>
+                <div className="space-y-2 text-sm pl-11">
+                    <div className="flex gap-2">
+                        <span className="text-emerald-400 font-bold min-w-[3rem]">Do:</span>
+                        <span className="text-slate-300">Plan dates during Venus Hora</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
 
 interface CardProps {
     title: string;

@@ -389,3 +389,114 @@ export const generateCoreInsights = async (details: BirthDetails): Promise<CoreI
   });
   return response.data.insights;
 };
+
+// --- DAILY PANCHANGA TYPES ---
+export interface LocationData {
+  city: string;
+  region?: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+}
+
+export interface TithiDataExtended {
+  name: string;
+  number: number;
+  paksha: string;
+  completion: number;
+  end_time: string;
+}
+
+export interface NakshatraDataExtended {
+  name: string;
+  number: number;
+  pada: number;
+  lord: string;
+  completion: number;
+  end_time: string;
+}
+
+export interface YogaDataExtended {
+  name: string;
+  number: number;
+  end_time: string;
+}
+
+export interface KaranaDataExtended {
+  name: string;
+  number: number;
+  end_time: string;
+}
+
+export interface VaraData {
+  name: string;
+  lord: string;
+}
+
+export interface PanchangaExtended {
+  tithi: TithiDataExtended;
+  nakshatra: NakshatraDataExtended;
+  yoga: YogaDataExtended;
+  karana: KaranaDataExtended;
+  vara: VaraData;
+}
+
+export interface HinduCalendar {
+  month: string;
+  paksha: string;
+  year: string;
+  samvat: string;
+}
+
+export interface AuspiciousTiming {
+  start: string;
+  end: string;
+}
+
+export interface AuspiciousTimings {
+  abhijit_muhurta: AuspiciousTiming;
+  brahma_muhurta: AuspiciousTiming;
+  rahu_kaal: AuspiciousTiming;
+  gulika_kaal?: AuspiciousTiming;
+  yamaganda_kaal?: AuspiciousTiming;
+}
+
+export interface PlanetaryPositionSmall {
+  sign: string;
+  degree: number;
+  nakshatra: string;
+}
+
+export interface DailyPanchangaResponse {
+  location: {
+    latitude: number;
+    longitude: number;
+    timezone: string;
+    city: string;
+  };
+  date: {
+    gregorian: string;
+    day_of_week: string;
+    sunrise: string;
+    sunset: string;
+    day_length: string;
+  };
+  panchanga: PanchangaExtended;
+  hindu_calendar: HinduCalendar;
+  auspicious_timings: AuspiciousTimings;
+  planetary_positions: Record<string, PlanetaryPositionSmall>;
+}
+
+export interface DailyPanchangaRequest {
+  latitude: number;
+  longitude: number;
+  date?: string;
+  city?: string;
+  ayanamsa_mode?: string;
+}
+
+export const fetchDailyPanchanga = async (request: DailyPanchangaRequest): Promise<DailyPanchangaResponse> => {
+  const response = await axiosInstance.post<DailyPanchangaResponse>('/api/daily-panchanga', request);
+  return response.data;
+};

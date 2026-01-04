@@ -3,8 +3,7 @@ import type { DailyMentorResponse, BirthDetails, Hora, SpecialTime } from '../ap
 import { getDailyMentor } from '../api/client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Briefcase, Heart, AlertTriangle, Sparkles } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Loader2, AlertTriangle, Sparkles } from "lucide-react";
 
 interface Props {
     birthDetails: BirthDetails;
@@ -42,7 +41,6 @@ export const DailyMentor: React.FC<Props> = ({ birthDetails }) => {
             <Header date={data.date} />
             <DailyFocusCard data={data} />
             <MomentsTimeline horaTimeline={data.hora_timeline} specialTimes={data.special_times} />
-            <LifeAreaGuidance />
         </div>
     );
 };
@@ -86,25 +84,12 @@ const DailyFocusCard: React.FC<{ data: DailyMentorResponse }> = ({ data }) => {
 };
 
 const MomentsTimeline: React.FC<{ horaTimeline: Hora[], specialTimes: SpecialTime[] }> = ({ horaTimeline, specialTimes }) => {
-    // Merge and Sort Timeline
-    // This is simplified. Ideally we interleave special times.
-    // For MVP, we show Horas list, with Special Times highlighted at top or interleaved?
-    // User Mockup: "Moments Timeline (Scrollable)" -> "Sun 8:15...", "Golden Moment..."
-
-    // We need real start/end timestamps to sort properly.
-    // The API returns localized formatted strings "HH:MM AM" which matches UI but hard to sort.
-    // However, the LIST is already sorted by time usually for Horas.
-    // Special times might overlap.
-
-    // For MVP 2: Just show Special Times distinctively, then Horas. Or interleaving requires parsing time.
-    // Let's just list Special Times first (Golden, Avoid) then current/upcoming Horas.
-
     const relevantSpecial = specialTimes.filter(t => t.description.includes("Golden") || t.quality === "Inauspicious");
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <h3 className="text-lg font-semibold text-neutral-500 px-1">Moments Timeline</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {/* Special Highlights */}
                 {relevantSpecial.map((st, idx) => (
                     <div key={idx} className={`p-4 rounded-lg border ${st.quality === 'Auspicious' ? 'bg-status-warning/5 border-status-warning/30' : 'bg-status-error/5 border-status-error/20'} flex items-center gap-4`}>
@@ -119,72 +104,50 @@ const MomentsTimeline: React.FC<{ horaTimeline: Hora[], specialTimes: SpecialTim
                     </div>
                 ))}
 
-                {/* Horas */}
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {horaTimeline.map((hora, idx) => (
-                        <div key={idx} className="p-3 bg-white/60 border border-skyblue-200/50 rounded-lg flex items-center justify-between hover:bg-skyblue-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-skyblue-50 border border-skyblue-100 flex items-center justify-center text-xs font-bold text-skyblue-600">
-                                    {hora.ruler.substring(0, 2)}
-                                </div>
-                                <div>
-                                    <div className="font-medium text-neutral-500">{hora.ruler} Hora</div>
-                                    <div className="text-xs text-neutral-400">{hora.quality}</div>
-                                </div>
-                            </div>
-                            <div className="text-xs font-mono text-neutral-400 text-right">
-                                <div>{hora.start_time}</div>
-                                <div className="opacity-50">to</div>
-                                <div>{hora.end_time}</div>
-                            </div>
-                        </div>
-                    ))}
+                {/* Hora Table */}
+                <div className="border border-skyblue-200/50 rounded-xl overflow-hidden bg-white/60">
+                    <table className="w-full text-sm">
+                        <thead className="bg-skyblue-50/50 text-neutral-500 border-b border-skyblue-200/30">
+                            <tr>
+                                <th className="px-4 py-3 text-left font-medium">Time Range</th>
+                                <th className="px-4 py-3 text-left font-medium">Ruler</th>
+                                <th className="px-4 py-3 text-left font-medium">Quality</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-skyblue-100">
+                            {horaTimeline.map((hora, idx) => (
+                                <tr key={idx} className="hover:bg-skyblue-50/30 transition-colors">
+                                    <td className="px-4 py-3 font-mono text-neutral-400">
+                                        {hora.start_time} - {hora.end_time}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-skyblue-50 border border-skyblue-100 flex items-center justify-center text-[10px] font-bold text-skyblue-600">
+                                                {hora.ruler.substring(0, 2)}
+                                            </div>
+                                            <span className="text-neutral-600 font-medium">{hora.ruler} Hora</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <Badge variant="outline" className={`
+                                            font-normal border-0
+                                            ${hora.quality === 'Good' ? 'bg-status-success/10 text-status-success' :
+                                                hora.quality === 'Average' ? 'bg-status-warning/10 text-status-warning' :
+                                                    'bg-status-error/10 text-status-error'}
+                                        `}>
+                                            {hora.quality}
+                                        </Badge>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     );
 };
 
-const LifeAreaGuidance: React.FC = () => (
-    <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-neutral-500 px-1">Life Area Guidance</h3>
-        <Accordion type="single" collapsible className="w-full space-y-2">
-            <AccordionItem value="career" className="border-none">
-                <AccordionTrigger className="px-4 py-3 bg-white border border-skyblue-200/50 hover:bg-skyblue-50 rounded-lg text-neutral-500 no-underline transition-all shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <Briefcase className="w-4 h-4 text-skyblue-500" />
-                        <span>Career & Work</span>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3 bg-skyblue-50/50 rounded-b-lg border-x border-b border-skyblue-200/30 text-sm text-neutral-400 space-y-2">
-                    <div className="flex gap-2">
-                        <span className="text-status-success font-bold">Do:</span>
-                        <span>Schedule meetings during Sun Hora</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <span className="text-status-error font-bold">Don't:</span>
-                        <span>Sign contracts during Rahu Kalam</span>
-                    </div>
-                </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="relationships" className="border-none">
-                <AccordionTrigger className="px-4 py-3 bg-white border border-skyblue-200/50 hover:bg-skyblue-50 rounded-lg text-neutral-500 no-underline transition-all shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <Heart className="w-4 h-4 text-violet-400" />
-                        <span>Relationships</span>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3 bg-violet-50/50 rounded-b-lg border-x border-b border-violet-200/30 text-sm text-neutral-400">
-                    <div className="flex gap-2">
-                        <span className="text-status-success font-bold">Do:</span>
-                        <span>Plan dates during Venus Hora</span>
-                    </div>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
-    </div>
-);
 
 const EmptyState = () => (
     <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground h-[60vh]">

@@ -1,0 +1,313 @@
+/* src/styles/daily-panchanga.css */
+
+.daily-panchanga-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    background-color: transparent;
+    min-height: calc(100vh - 100px);
+}
+
+.panchanga-header {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@media (min-width: 768px) {
+    .panchanga-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.location-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.location-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.location-info .city {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.location-info .coords {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.date-info {
+    text-align: right;
+}
+
+.date-info h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0ea5e9;
+    margin: 0;
+}
+
+.solar-times {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 4px;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.solar-times span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hindu-calendar-banner {
+    background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hindu-calendar-banner h3 {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.9;
+    margin: 0 0 4px 0;
+}
+
+.hindu-calendar-banner .main-info {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.panchanga-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.panchanga-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.panchanga-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(14, 165, 233, 0.1);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #f0f9ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.card-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.card-sub {
+    font-size: 0.875rem;
+    color: #0ea5e9;
+    font-weight: 500;
+}
+
+.progress-container {
+    margin-top: 16px;
+}
+
+.progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+    border-radius: 3px;
+    transition: width 1s ease-out;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.end-time-tag {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 4px 12px;
+    background: #f5f3ff;
+    color: #8b5cf6;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.timings-section {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.1);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.timing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+}
+
+.timing-item.auspicious {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+}
+
+.timing-item.inauspicious {
+    background: #fef2f2;
+    border-color: #fee2e2;
+}
+
+.timing-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.timing-label {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.timing-range {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.auspicious .timing-range {
+    color: #16a34a;
+}
+
+.inauspicious .timing-range {
+    color: #dc2626;
+}
+
+.planetary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.1);
+}
+
+.planets-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.planet-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.planet-icon {
+    font-size: 1.25rem;
+}
+
+.planet-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.planet-name-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.planet-pos-val {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+}

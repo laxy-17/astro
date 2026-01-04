@@ -7,7 +7,7 @@
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
 
-Recent major updates include a serene "Sky Blue & Violet" UI migration, resolution of 500 Internal Server Errors in Daily Mentor/Timings, an interactive Dasha timeline, and rigorous accuracy verification against Gold Standard charts.
+Recent major updates include a serene "Sky Blue & Violet" UI migration, resolution of 500 Internal Server Errors in Daily Mentor/Timings, an interactive Dasha timeline, integration of **OpenStreetMap Nominatim** for location search, and rigorous accuracy verification against Gold Standard charts.
 
 ## 2. Technology Stack
 
@@ -77,6 +77,8 @@ Recent major updates include a serene "Sky Blue & Violet" UI migration, resoluti
 - **Resilience**: Graceful error handling for missing API keys or offline states.
 - **UI Polish**:
     - High-contrast text for accessibility (AI Mentor).
+    - **Unified Theme**: Consistent "Sky Blue & Violet" palette across Dashas, Transits, and Panchanga.
+    - **Mentor Dashboard**: Consolidated Life Area Guidance and Hora Timings into a unified "AI Vedic Mentor" panel.
     - Astrological degree display (0-30°) for easier reading.
     - Single-line longitude formatting.
     - Maandi abbreviated as 'Mn'.

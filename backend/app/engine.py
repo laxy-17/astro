@@ -6,7 +6,15 @@ from typing import Optional, List, Tuple, Dict
 from threading import RLock
 from timezonefinder import TimezoneFinder
 import pytz
-from .models import PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, KaranaData, SpecialTime
+from .models import (
+    PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, 
+    VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, 
+    KaranaData, SpecialTime, DailyPanchangaResponse, LocationInfo,
+    DateInfo, TithiDataExtended, NakshatraDataExtended, YogaDataExtended, 
+    KaranaDataExtended, VaraData, PanchangaExtended, HinduCalendar, 
+    AuspiciousTiming, AuspiciousTimings, PlanetaryPositionSmall
+)
+from .utils.timezone_helper import get_timezone_for_coordinates, get_local_datetime, get_sunrise_sunset, jd_to_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -1631,3 +1639,156 @@ def calculate_special_times(
     })
 
     return results
+# --- ENHANCED DAILY PANCHANGA ENGINE ---
+
+def calculate_daily_panchanga_extended(
+    date_val: date,
+    time_val: time,
+    latitude: float,
+    longitude: float,
+    ayanamsa_mode: str = "LAHIRI"
+) -> PanchangaExtended:
+    """
+    Calculate complete daily Panchanga with end times for each element.
+    This is more detailed than birth chart Panchanga.
+    """
+    jd = get_julian_day(date_val, time_val)
+    
+    # Set ayanamsa
+    sid_mode = AYANAMSA_MAP.get(ayanamsa_mode, swe.SIDM_LAHIRI)
+    if ayanamsa_mode != "SAYANA":
+        swe.set_sid_mode(sid_mode)
+    
+    # Calculate planet positions
+    with swe_lock:
+        is_tropical = ayanamsa_mode == "SAYANA"
+        flags = swe.FLG_SWIEPH | (0 if is_tropical else swe.FLG_SIDEREAL)
+        sun_data, _ = swe.calc_ut(jd, swe.SUN, flags)
+        moon_data, _ = swe.calc_ut(jd, swe.MOON, flags)
+    
+    sun_lon = sun_data[0]
+    moon_lon = moon_data[0]
+    
+    # Calculate Tithi with end time
+    tithi_data = calculate_tithi_with_end_time(sun_lon, moon_lon, jd, latitude, longitude)
+    
+    # Calculate Nakshatra with end time
+    nakshatra_data = calculate_nakshatra_with_end_time(moon_lon, jd, latitude, longitude)
+    
+    # Calculate Yoga with end time
+    yoga_data = calculate_yoga_with_end_time(sun_lon, moon_lon, jd, latitude, longitude)
+    
+    # Calculate Karana with end time
+    karana_data = calculate_karana_with_end_time(sun_lon, moon_lon, jd, latitude, longitude)
+    
+    # Calculate Vara
+    weekday_idx = date_val.weekday()
+    vedic_day_idx = (weekday_idx + 1) % 7
+    PLANET_ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn']
+    vara_name = WEEKDAYS[vedic_day_idx]
+    vara_lord = PLANET_ORDER[vedic_day_idx]
+    
+    return PanchangaExtended(
+        tithi=tithi_data,
+        nakshatra=nakshatra_data,
+        yoga=yoga_data,
+        karana=karana_data,
+        vara=VaraData(name=vara_name, lord=vara_lord)
+    )
+
+def calculate_tithi_with_end_time(sun_lon: float, moon_lon: float, jd: float, lat: float, lon: float) -> TithiDataExtended:
+    diff = (moon_lon - sun_lon) % 360
+    tithi_index = int(diff / 12)
+    degree_in_tithi = diff % 12
+    tithi_completion = (degree_in_tithi / 12) * 100
+    degrees_remaining = 12 - degree_in_tithi
+    hours_remaining = (degrees_remaining / 12) * 24
+    end_jd = jd + (hours_remaining / 24)
+    end_dt = jd_to_datetime(end_jd, lat, lon)
+    is_shukla = tithi_index < 15
+    tithi_name = TITHIS[tithi_index % 15]
+    if tithi_index == 14: tithi_name = "Purnima"
+    if tithi_index == 29: tithi_name = "Amavasya"
+    return TithiDataExtended(name=tithi_name, number=tithi_index + 1, paksha="Shukla" if is_shukla else "Krishna", completion=round(tithi_completion, 2), end_time=end_dt.strftime("%H:%M:%S"))
+
+def calculate_nakshatra_with_end_time(moon_lon: float, jd: float, lat: float, lon: float) -> NakshatraDataExtended:
+    nak_len = 360.0 / 27.0
+    nak_index = int(moon_lon / nak_len) % 27
+    degree_in_nak = moon_lon % nak_len
+    pada = int(degree_in_nak / (nak_len / 4)) + 1
+    nak_completion = (degree_in_nak / nak_len) * 100
+    degrees_remaining = nak_len - degree_in_nak
+    hours_remaining = (degrees_remaining / 13.176) * 24
+    end_jd = jd + (hours_remaining / 24)
+    end_dt = jd_to_datetime(end_jd, lat, lon)
+    lords = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+    return NakshatraDataExtended(name=NAKSHATRAS[nak_index], number=nak_index + 1, pada=pada, lord=lords[nak_index % 9], completion=round(nak_completion, 2), end_time=end_dt.strftime("%H:%M:%S"))
+
+def calculate_yoga_with_end_time(sun_lon: float, moon_lon: float, jd: float, lat: float, lon: float) -> YogaDataExtended:
+    total = (moon_lon + sun_lon) % 360
+    yoga_unit = 360 / 27
+    yoga_index = int(total / yoga_unit)
+    degree_in_yoga = total % yoga_unit
+    degrees_remaining = yoga_unit - degree_in_yoga
+    hours_remaining = (degrees_remaining / 14.176) * 24
+    end_jd = jd + (hours_remaining / 24)
+    end_dt = jd_to_datetime(end_jd, lat, lon)
+    return YogaDataExtended(name=YOGAS[yoga_index], number=yoga_index + 1, end_time=end_dt.strftime("%H:%M:%S"))
+
+def calculate_karana_with_end_time(sun_lon: float, moon_lon: float, jd: float, lat: float, lon: float) -> KaranaDataExtended:
+    diff = (moon_lon - sun_lon) % 360
+    k_index = int(diff / 6)
+    if k_index == 0: karana_name = "Kimstughna"
+    elif k_index >= 57:
+        rem = k_index - 57
+        karana_name = ["Shakuni", "Chatushpada", "Naga"][rem]
+    else:
+        rem = (k_index - 1) % 7
+        karana_name = KARANAS[rem]
+    degree_in_karana = diff % 6
+    degrees_remaining = 6 - degree_in_karana
+    hours_remaining = (degrees_remaining / 12) * 24
+    end_jd = jd + (hours_remaining / 24)
+    end_dt = jd_to_datetime(end_jd, lat, lon)
+    return KaranaDataExtended(name=karana_name, number=k_index + 1, end_time=end_dt.strftime("%H:%M:%S"))
+
+def calculate_auspicious_timings_extended(sunrise: datetime, sunset: datetime, lat: float, lon: float) -> AuspiciousTimings:
+    day_duration = sunset - sunrise
+    noon = sunrise + (day_duration / 2)
+    abhijit_start = noon - timedelta(minutes=24)
+    abhijit_end = noon + timedelta(minutes=24)
+    brahma_start = sunrise - timedelta(hours=1, minutes=36)
+    brahma_end = sunrise - timedelta(minutes=48)
+    weekday_idx = sunrise.weekday()
+    rahu_map = { 0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8 }
+    segment_idx = rahu_map[weekday_idx] - 1
+    segment_len = day_duration / 8
+    rahu_start = sunrise + (segment_len * segment_idx)
+    rahu_end = rahu_start + segment_len
+    gulika_map = { 6: 7, 0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 }
+    g_seg = gulika_map[weekday_idx] - 1
+    gulika_start = sunrise + (segment_len * g_seg)
+    gulika_end = gulika_start + segment_len
+    yamaganda_map = { 6: 5, 0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6 }
+    y_seg = yamaganda_map[weekday_idx] - 1
+    yamaganda_start = sunrise + (segment_len * y_seg)
+    yamaganda_end = yamaganda_start + segment_len
+    return AuspiciousTimings(abhijit_muhurta=AuspiciousTiming(start=abhijit_start.strftime("%H:%M:%S"), end=abhijit_end.strftime("%H:%M:%S")), brahma_muhurta=AuspiciousTiming(start=brahma_start.strftime("%H:%M:%S"), end=brahma_end.strftime("%H:%M:%S")), rahu_kaal=AuspiciousTiming(start=rahu_start.strftime("%H:%M:%S"), end=rahu_end.strftime("%H:%M:%S")), gulika_kaal=AuspiciousTiming(start=gulika_start.strftime("%H:%M:%S"), end=gulika_end.strftime("%H:%M:%S")), yamaganda_kaal=AuspiciousTiming(start=yamaganda_start.strftime("%H:%M:%S"), end=yamaganda_end.strftime("%H:%M:%S")))
+
+def get_hindu_calendar_info(target_date: date, p_data: PanchangaExtended) -> HinduCalendar:
+    months = ["Chaitra", "Vaisakha", "Jyaistha", "Ashadha", "Sravana", "Bhadrapada", "Asvina", "Kartika", "Margasirsa", "Pausa", "Magha", "Phalguna"]
+    m_idx = (target_date.month + 1) % 12
+    return HinduCalendar(month=months[m_idx], paksha=p_data.tithi.paksha, year=f"{target_date.year + 57} Vikrama", samvat=f"Vikrama Samvat {target_date.year + 57}")
+
+def get_planetary_positions_small(jd: float, ayanamsa_mode: str) -> dict[str, PlanetaryPositionSmall]:
+    is_tropical = ayanamsa_mode == "SAYANA"
+    flags = swe.FLG_SWIEPH | (0 if is_tropical else swe.FLG_SIDEREAL)
+    planets = {}
+    for name in ["Sun", "Moon"]:
+        pid = PLANET_MAP[name]
+        xx, _ = swe.calc_ut(jd, pid, flags)
+        lon = xx[0]
+        sign = get_sign_from_longitude(lon)
+        nak, _ = get_nakshatra(lon)
+        planets[name.lower()] = PlanetaryPositionSmall(sign=sign, degree=round(lon % 30, 2), nakshatra=nak)
+    return planets

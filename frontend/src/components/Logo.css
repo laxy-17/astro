@@ -1,0 +1,167 @@
+.logo-container {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.logo-8stro {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1e293b;
+    /* slate-800 matches our neutral-800 approx */
+}
+
+.logo-symbol {
+    color: #0ea5e9;
+    /* sky-500 */
+    transition: all 0.5s ease;
+    display: inline-block;
+}
+
+.logo-symbol-animated {
+    color: #0ea5e9;
+    /* sky-500 */
+    animation: symbolMorph 6s ease-in-out infinite;
+    display: inline-block;
+    position: relative;
+}
+
+@keyframes symbolMorph {
+
+    0%,
+    100% {
+        transform: rotate(0deg) scale(1);
+        filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.2));
+    }
+
+    50% {
+        transform: rotate(90deg) scale(1.1);
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
+        color: #8b5cf6;
+        /* violet-500 */
+    }
+}
+
+.logo-text {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.logo-tagline {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.28em;
+    text-align: center;
+    margin-top: -2px;
+}
+
+.tagline-destiny {
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #64748b;
+    /* slate-500 */
+}
+
+.tagline-precision {
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    color: #0ea5e9;
+}
+
+/* Size Variants */
+.logo-small .logo-8stro {
+    font-size: 1.25rem;
+}
+
+.logo-medium .logo-8stro {
+    font-size: 2rem;
+}
+
+.logo-large .logo-8stro {
+    font-size: 3.5rem;
+}
+
+.logo-xl .logo-8stro {
+    font-size: 5rem;
+}
+
+/* Icon Only */
+.logo-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20%;
+    background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.logo-icon .logo-symbol,
+.logo-icon .logo-symbol-animated {
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.logo-icon.logo-small {
+    width: 32px;
+    height: 32px;
+}
+
+.logo-icon.logo-small .logo-symbol,
+.logo-icon.logo-small .logo-symbol-animated {
+    font-size: 1.25rem;
+}
+
+.logo-icon.logo-medium {
+    width: 56px;
+    height: 56px;
+}
+
+.logo-icon.logo-medium .logo-symbol,
+.logo-icon.logo-medium .logo-symbol-animated {
+    font-size: 2rem;
+}
+
+.logo-icon.logo-large {
+    width: 96px;
+    height: 96px;
+}
+
+.logo-icon.logo-large .logo-symbol,
+.logo-icon.logo-large .logo-symbol-animated {
+    font-size: 3.5rem;
+}
+
+.logo-icon.logo-xl {
+    width: 160px;
+    height: 160px;
+}
+
+.animate-loading-bar {
+    width: 100%;
+    animation: loadingBar 2.5s ease-in-out infinite;
+    transform-origin: left;
+}
+
+@keyframes loadingBar {
+    0% {
+        transform: scaleX(0);
+    }
+
+    50% {
+        transform: scaleX(1);
+    }
+
+    100% {
+        transform: scaleX(0);
+        transform-origin: right;
+    }
+}
+
+.logo-icon.logo-xl .logo-symbol,
+.logo-icon.logo-xl .logo-symbol-animated {
+    font-size: 6rem;
+}
