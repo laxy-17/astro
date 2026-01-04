@@ -24,7 +24,8 @@ Recent major updates include a serene "Sky Blue & Violet" UI migration, resoluti
 ### Backend
 - **Framework**: FastAPI (Python 3.13)
 - **Server**: Uvicorn (ASGI)
-- **Database**: SQLite (local persistence)
+- **Database**: PostgreSQL (Supabase ready) with SQLite fallback for local development.
+- **Infrastructure**: Docker Compose with support for external `DATABASE_URL` and SSL.
 - **Authentication**: None (MVP - Open Access)
 - **Deployment**: Docker (Single container serving both frontend static files and backend API)
 

@@ -12,7 +12,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/vedic_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@db:5432/vedic_db}
       - EPHEME_PATH=/app/ephemeris
     depends_on:
       - db

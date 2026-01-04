@@ -11,14 +11,28 @@ from pydantic import BaseModel
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./charts.db")
 
 # Handle Supabase "transaction mode" (postgres:// vs postgresql://)
+# and ensure sslmode=require for remote hosts
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+if "sqlite" not in DATABASE_URL and "sslmode" not in DATABASE_URL:
+    separator = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{separator}sslmode=require"
+
+import logging
+logger = logging.getLogger(__name__)
+
 # SQLAlchemy Engine
-engine = create_engine(
-    DATABASE_URL, 
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
-)
+try:
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+        pool_pre_ping=True # Efficiently handle dropped connections
+    )
+    logger.info(f"Database engine initialized for: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'SQLite'}")
+except Exception as e:
+    logger.error(f"Failed to initialize database engine: {e}")
+    raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
