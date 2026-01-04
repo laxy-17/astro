@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CoreInsights } from '../api/client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Props {
     prediction: string | null;
@@ -25,7 +25,7 @@ export const InsightsPanel: React.FC<Props> = ({ prediction, dosha, coreInsights
 
     return (
         <Card className="glass-panel border-border bg-card/50 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 px-6 py-4 border-b border-white/10">
+            <div className="bg-gradient-to-r from-violet-700 to-indigo-700 px-6 py-4 border-b border-white/10">
                 <h2 className="text-white font-bold text-lg flex items-center gap-2">
                     <span>🧙‍♂️</span> AI Vedic Mentor
                 </h2>

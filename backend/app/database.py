@@ -1,18 +1,67 @@
-
-import sqlite3
-import json
 import os
+import json
 from typing import List, Optional, Any
+from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.sql import func
 from pydantic import BaseModel
-from datetime import date, time
 
-DB_PATH = "charts.db"
+# --- CONFIGURATION ---
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./charts.db")
 
+# Handle Supabase "transaction mode" (postgres:// vs postgresql://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# SQLAlchemy Engine
+engine = create_engine(
+    DATABASE_URL, 
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# --- SQLALCHEMY MODELS ---
+class DBChart(Base):
+    __tablename__ = "charts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    date = Column(String) # YYYY-MM-DD
+    time = Column(String) # HH:MM:SS
+    latitude = Column(Float)
+    longitude = Column(Float)
+    ayanamsa_mode = Column(String)
+    
+    # Location Metadata
+    location_city = Column(String, nullable=True)
+    location_state = Column(String, nullable=True)
+    location_country = Column(String, nullable=True)
+    location_timezone = Column(String, nullable=True)
+    
+    # AI/Context
+    notes = Column(Text, nullable=True)
+    
+    # Auditing
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class DBUser(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# --- PYDANTIC SCHEMAS ---
 class SavedChart(BaseModel):
     id: int
     name: str
-    date: str # YYYY-MM-DD
-    time: str # HH:MM:SS
+    date: str
+    time: str
     latitude: float
     longitude: float
     ayanamsa_mode: str
@@ -20,107 +69,77 @@ class SavedChart(BaseModel):
     location_state: Optional[str] = None
     location_country: Optional[str] = None
     location_timezone: Optional[str] = None
-    created_at: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
+# --- DB INIT ---
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS charts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            date TEXT NOT NULL,
-            time TEXT NOT NULL,
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            ayanamsa_mode TEXT NOT NULL,
-            location_city TEXT,
-            location_state TEXT,
-            location_country TEXT,
-            location_timezone TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Simple migration hack for existing tables
-    try:
-        c.execute('ALTER TABLE charts ADD COLUMN location_city TEXT')
-        c.execute('ALTER TABLE charts ADD COLUMN location_state TEXT')
-        c.execute('ALTER TABLE charts ADD COLUMN location_country TEXT')
-        c.execute('ALTER TABLE charts ADD COLUMN location_timezone TEXT')
-    except sqlite3.OperationalError:
-        # Columns likely exist
-        pass
-        
-    conn.commit()
-    conn.close()
+    Base.metadata.create_all(bind=engine)
 
-def save_chart(name: str, d: Any, t: Any, lat: float, lon: float, mode: str, loc_city: str = None, loc_state: str = None, loc_country: str = None, loc_tz: str = None):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+# --- CRUD OPERATIONS ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def save_chart(name: str, d: Any, t: Any, lat: float, lon: float, mode: str, 
+               loc_city: str = None, loc_state: str = None, loc_country: str = None, loc_tz: str = None) -> dict:
     
-    # Convert date/time objects to strings if needed
-    date_str = d.isoformat() if hasattr(d, 'isoformat') else str(d)
-    time_str = t.isoformat() if hasattr(t, 'isoformat') else str(t)
-    
-    # Check for existing chart with same name
-    c.execute('SELECT id FROM charts WHERE name = ?', (name,))
-    row = c.fetchone()
-    
-    if row:
-        # Update existing
-        chart_id = row[0]
-        c.execute('''
-            UPDATE charts 
-            SET date=?, time=?, latitude=?, longitude=?, ayanamsa_mode=?, 
-                location_city=?, location_state=?, location_country=?, location_timezone=?,
-                created_at=CURRENT_TIMESTAMP
-            WHERE id=?
-        ''', (date_str, time_str, lat, lon, mode, loc_city, loc_state, loc_country, loc_tz, chart_id))
-        action = "updated"
-    else:
-        # Insert new
-        c.execute('''
-            INSERT INTO charts (name, date, time, latitude, longitude, ayanamsa_mode,
-                                location_city, location_state, location_country, location_timezone)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, date_str, time_str, lat, lon, mode, loc_city, loc_state, loc_country, loc_tz))
-        chart_id = c.lastrowid
-        action = "created"
+    db = SessionLocal()
+    try:
+        # Normalize date/time
+        date_str = d.isoformat() if hasattr(d, 'isoformat') else str(d)
+        time_str = t.isoformat() if hasattr(t, 'isoformat') else str(t)
         
-    conn.commit()
-    conn.close()
-    return {"id": chart_id, "action": action}
+        # Check if exists (by name for now, simulating user update)
+        chart = db.query(DBChart).filter(DBChart.name == name).first()
+        
+        if chart:
+            chart.date = date_str
+            chart.time = time_str
+            chart.latitude = lat
+            chart.longitude = lon
+            chart.ayanamsa_mode = mode
+            chart.location_city = loc_city
+            chart.location_state = loc_state
+            chart.location_country = loc_country
+            chart.location_timezone = loc_tz
+            action = "updated"
+        else:
+            chart = DBChart(
+                name=name, date=date_str, time=time_str, 
+                latitude=lat, longitude=lon, ayanamsa_mode=mode,
+                location_city=loc_city, location_state=loc_state, 
+                location_country=loc_country, location_timezone=loc_tz
+            )
+            db.add(chart)
+            action = "created"
+        
+        db.commit()
+        db.refresh(chart)
+        return {"id": chart.id, "action": action}
+    finally:
+        db.close()
 
 def list_charts() -> List[SavedChart]:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute('SELECT * FROM charts ORDER BY created_at DESC')
-    rows = c.fetchall()
-    conn.close()
-    
-    charts = []
-    for row in rows:
-        charts.append(SavedChart(
-            id=row['id'],
-            name=row['name'],
-            date=row['date'],
-            time=row['time'],
-            latitude=row['latitude'],
-            longitude=row['longitude'],
-            ayanamsa_mode=row['ayanamsa_mode'],
-            location_city=row['location_city'] if 'location_city' in row.keys() else None,
-            location_state=row['location_state'] if 'location_state' in row.keys() else None,
-            location_country=row['location_country'] if 'location_country' in row.keys() else None,
-            location_timezone=row['location_timezone'] if 'location_timezone' in row.keys() else None,
-            created_at=row['created_at']
-        ))
-    return charts
+    db = SessionLocal()
+    try:
+        charts = db.query(DBChart).order_by(DBChart.created_at.desc()).all()
+        # Pydantic conversion
+        return [SavedChart.model_validate(c) for c in charts]
+    finally:
+        db.close()
 
 def delete_chart(chart_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM charts WHERE id = ?', (chart_id,))
-    conn.commit()
-    conn.close()
+    db = SessionLocal()
+    try:
+        chart = db.query(DBChart).filter(DBChart.id == chart_id).first()
+        if chart:
+            db.delete(chart)
+            db.commit()
+    finally:
+        db.close()

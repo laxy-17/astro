@@ -6,7 +6,7 @@ from typing import Optional, List, Tuple, Dict
 from threading import RLock
 from timezonefinder import TimezoneFinder
 import pytz
-from .models import PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, KaranaData
+from .models import PlanetPosition, House, ChartResponse, BirthDetails, Panchanga, VargaChart, VargaPosition, TithiData, NakshatraData, YogaData, KaranaData, SpecialTime
 
 logger = logging.getLogger(__name__)
 
@@ -361,6 +361,80 @@ def calculate_panchanga(moon_lon: float, sun_lon: float, jd: float, details: Bir
         vara=vara_name
     )
 
+def calculate_daily_panchanga(
+    date_obj: date,
+    lat: float,
+    lon: float,
+    timezone_str: str = "UTC"
+) -> Panchanga:
+    """
+    Calculate Panchanga for a specific Date and Location (typically for Daily Timing).
+    Calculates positions at Sunrise.
+    """
+    try:
+        tz = pytz.timezone(timezone_str)
+
+        # 1. Sunrise JD
+        # Use noon UTC to find sunrise of that day
+        noon_utc = datetime.combine(date_obj, time(12, 0), tzinfo=tz).astimezone(timezone.utc)
+        jd_noon = swe.julday(noon_utc.year, noon_utc.month, noon_utc.day, 12.0 + noon_utc.minute/60.0)
+        
+        geopos = (lon, lat, 0)
+        res_rise = swe.rise_trans(
+            jd_noon, swe.SUN, swe.CALC_RISE | swe.BIT_DISC_CENTER, geopos
+        )
+        
+        if isinstance(res_rise, tuple):
+             val = res_rise[1][0]
+        else:
+             val = res_rise
+             
+        if val == 0: # Checks logic? No, res_rise[0] is return code?
+             # Swisseph returns (int ret, tuple t)
+             # If ret == -1 or -2 error.
+             # If ret == 0, success.
+             # But line 347 checks isinstance?
+             # Let's trust line 347 pattern:
+             # sunrise_jd = rise_res[1][0] if isinstance(rise_res, tuple) else rise_res
+             pass
+        
+        if isinstance(res_rise, tuple) and res_rise[0] == 0:
+            jd_sunrise = res_rise[1][0]
+        elif not isinstance(res_rise, tuple):
+             jd_sunrise = res_rise # Old version?
+        else:
+            # Fallback
+            dt_6am = datetime.combine(date_obj, time(6, 0), tz).astimezone(timezone.utc)
+            jd_sunrise = swe.julday(dt_6am.year, dt_6am.month, dt_6am.day, dt_6am.hour + dt_6am.minute/60.0)
+
+        # 2. Calculate Positions at Sunrise
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+
+        # Sun
+        sun_res = swe.calc_ut(jd_sunrise, swe.SUN, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        sun_lon = sun_res[0][0]
+
+        # Moon
+        moon_res = swe.calc_ut(jd_sunrise, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        moon_lon = moon_res[0][0]
+
+        # 3. Create Temp Details for 'Vara' calculation inside calculate_panchanga
+        # We pass the current_date as the 'date' in BirthDetails so logic works
+        temp_details = BirthDetails(
+            date=date_obj.isoformat(),
+            time="06:00",
+            latitude=lat,
+            longitude=lon,
+            ayanamsa_mode="LAHIRI"
+        )
+
+        return calculate_panchanga(moon_lon, sun_lon, jd_sunrise, temp_details)
+
+    except Exception as e:
+        logger.error(f"Error in calculate_daily_panchanga: {e}")
+        # Return fallback or raise
+        raise e
+
 def get_julian_day(d: date, t: time) -> float:
     """Convert date and time to Julian Day number."""
     decimal_hour = t.hour + t.minute / 60.0 + t.second / 3600.0
@@ -381,7 +455,130 @@ def get_nakshatra(lon: float) -> tuple[str, str]:
     lord_index = nak_index % 9
     lord = lords[lord_index]
     
+    
     return nak_name, lord
+
+def get_sunrise_sunset_daily(date_obj: date, lat: float, lon: float) -> Tuple[float, float, float]:
+    """
+    Get Sunrise, Sunset, and Next Sunrise JDs for a specific CIVIL DATE.
+    Used for Daily Hora calculations.
+    """
+    geopos = (lon, lat, 0)
+    
+    # JD for Midnight of the requested civil date
+    jd_midnight = swe.julday(date_obj.year, date_obj.month, date_obj.day, 0)
+    
+    # Find Sunrise for this civil day
+    # Search from midnight
+    rise = swe.rise_trans(jd_midnight, swe.SUN, swe.CALC_RISE, geopos)[1][0]
+    
+    # Find Sunset for this civil day (must be after sunrise)
+    sett = swe.rise_trans(rise, swe.SUN, swe.CALC_SET, geopos)[1][0]
+    
+    # Find Sunrise for NEXT civil day (to define night length)
+    # Search from tomorrow midnight to be safe/consistent?
+    # Or just search from sunset
+    next_rise = swe.rise_trans(sett, swe.SUN, swe.CALC_RISE, geopos)[1][0]
+    
+    return rise, sett, next_rise
+
+def calculate_horas(date_obj: date, lat: float, lon: float, tz_str: str) -> 'DailyTimeline':
+    """
+    Calculate 24 Horas for a given day.
+    """
+    from .models import Hora, DailyTimeline # Local import to avoid circular dependency if any
+    
+    rise, sett, next_rise = get_sunrise_sunset_daily(date_obj, lat, lon)
+    
+    # Timezone conversion helper
+    def jd_to_local_str(jd_val):
+        utc_str = jd_to_time(jd_val)
+        return convert_utc_to_local(utc_str, tz_str)
+
+    # 1. Determine Day Lord (Vara)
+    # The ruler of the first Hora is the ruler of the weekday.
+    # Weekday defined by Sunrise.
+    # We used 'date_obj' so we assume the user wants the Horas "starting" on that civil date's sunrise.
+    weekday_idx = date_obj.weekday() # 0=Mon, 6=Sun
+    # Map Python weekday to Vedic (0=Sun, 1=Mon...)
+    # Python: Mon(0)..Sun(6) -> Vedic: Sun(0)..Sat(6) ?
+    # Wait. 
+    # Python: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6.
+    # Vedic: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6.
+    # Mapping: (python_day + 1) % 7
+    vedic_day_idx = (weekday_idx + 1) % 7
+    
+    # Planetary Rulers standard order (Sun -> Sat)
+    # 0=Sun, 1=Mon, 2=Mar, 3=Mer, 4=Jup, 5=Ven, 6=Sat
+    PLANET_ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn']
+    day_lord_name = PLANET_ORDER[vedic_day_idx]
+    
+    # Hora Ruler Sequence (Reverse Speed): Sun, Ven, Mer, Moo, Sat, Jup, Mar
+    # Or simply: Next Hora Ruler is the 6th from current in week order.
+    # Current (0) -> +5 mod 7? No.
+    # Sun(0) -> Ven(5). (+5)
+    # Ven(5) -> Mer(3). (5+5=10%7=3). Yes.
+    # Mer(3) -> Moo(1). (3+5=8%7=1). Yes.
+    HORA_ORDER = []
+    curr = vedic_day_idx
+    for _ in range(24):
+        HORA_ORDER.append(PLANET_ORDER[curr])
+        curr = (curr + 5) % 7
+        
+    horas = []
+    
+    # Day Horas (12 parts)
+    day_duration = sett - rise
+    part_len = day_duration / 12.0
+    
+    current_time = rise
+    for i in range(12):
+        start_t = current_time
+        end_t = current_time + part_len
+        
+        ruler = HORA_ORDER[i]
+        
+        horas.append(Hora(
+            index=i+1,
+            start_time=jd_to_local_str(start_t).split(" ")[0] + " " + jd_to_local_str(start_t).split(" ")[1], # HH:MM AM
+            end_time=jd_to_local_str(end_t).split(" ")[0] + " " + jd_to_local_str(end_t).split(" ")[1],
+            ruler=ruler,
+            quality="Neutral", # TODO: Implement quality logic
+            color="#FFD700" if ruler == 'Sun' else "#C0C0C0" # Placeholder
+        ))
+        current_time = end_t
+        
+    # Night Horas (12 parts)
+    night_duration = next_rise - sett
+    part_len_night = night_duration / 12.0
+    
+    # Identify offset for night rulers
+    # Actually HORA_ORDER has all 24.
+    
+    current_time = sett
+    for i in range(12, 24):
+        start_t = current_time
+        end_t = current_time + part_len_night
+        
+        ruler = HORA_ORDER[i]
+        
+        horas.append(Hora(
+            index=i+1,
+            start_time=jd_to_local_str(start_t).split(" ")[0] + " " + jd_to_local_str(start_t).split(" ")[1],
+            end_time=jd_to_local_str(end_t).split(" ")[0] + " " + jd_to_local_str(end_t).split(" ")[1],
+            ruler=ruler,
+            quality="Neutral"
+        ))
+        current_time = end_t
+        
+    return DailyTimeline(
+        date=date_obj.isoformat(),
+        location=f"{lat},{lon}",
+        sunrise=jd_to_local_str(rise),
+        sunset=jd_to_local_str(sett),
+        horas=horas
+    )
+
 
 # ============================================================================
 # CHART CALCULATION
@@ -634,6 +831,16 @@ def calculate_chart(details: BirthDetails) -> ChartResponse:
         dashas = calculate_dashas(moon.longitude, details.date)
         panchanga = calculate_panchanga(moon.longitude, sun.longitude, jd, details)
         strengths = calculate_vimsopaka_strength(divisional_charts)
+        
+        # Calculate Special Timings (Muhurta)
+        special_timings = calculate_special_times(
+            details.date, 
+            details.latitude, 
+            details.longitude, 
+            tz_str
+        )
+        # Convert dicts to SpecialTime objects
+        special_times = [SpecialTime(**st) for st in special_timings]
 
         return ChartResponse(
             ascendant=ascendant_degree,
@@ -644,8 +851,9 @@ def calculate_chart(details: BirthDetails) -> ChartResponse:
             panchanga=panchanga,
             strengths=strengths,
             divisional_charts=divisional_charts,
+            special_times=special_times,
+            ayanamsa=ayanamsa,
             sunrise_time=sr_local,
-            sunset_time=ss_local,
             mandhi_time_local=convert_utc_to_local(mandhi_debug_time, tz_str) if mandhi_debug_time else None
         )
 
@@ -718,6 +926,13 @@ def calculate_mandhi_enhanced(
         logger.error(f"Mandhi calc failed: {e}")
         return None, None
 
+
+def format_degree(degree_val: float) -> str:
+    """Format decimal degree to DD° MM' SS\""""
+    d = int(degree_val)
+    m = int((degree_val - d) * 60)
+    s = int(((degree_val - d) * 60 - m) * 60)
+    return f"{d}° {m}' {s}\""
 
 def calculate_jaimini_karakas(planets: List[dict]) -> dict:
     """
@@ -811,40 +1026,7 @@ def get_current_transits_extended():
         })
         
         # 2. Special Points (Maandi/Gulika)
-        # Require a location. We'll use Ujjain (classic Meru) or just 0,0.
-        # Let's use 0 Lat, 0 Long (Greenwich equator) for generic "World Time".
-        dummy_details = BirthDetails(
-            date=now.date(), time=now.time(), 
-            latitude=0, longitude=0, ayanamsa_mode='LAHIRI'
-        )
-        
-        maandi = calculate_maandi(jd, dummy_details, ayanamsa)
-        if maandi:
-            bodies.append({
-                'name': 'Maandi',
-                'type': 'special_point',
-                'sign': maandi.sign,
-                'degree': format_degree(maandi.longitude),
-                'longitude': maandi.longitude,
-                'nakshatra': maandi.nakshatra,
-                'pada': int((maandi.longitude % (360/27)) / (360/108)) + 1,
-                'speed': 0,
-                'retrograde': False
-            })
-            
-        gulika = calculate_gulika(jd, dummy_details, ayanamsa)
-        if gulika:
-            bodies.append({
-                'name': 'Gulika',
-                'type': 'special_point',
-                'sign': gulika.sign,
-                'degree': format_degree(gulika.longitude),
-                'longitude': gulika.longitude,
-                'nakshatra': gulika.nakshatra,
-                'pada': int((gulika.longitude % (360/27)) / (360/108)) + 1,
-                'speed': 0,
-                'retrograde': False
-            })
+        # Skipped for Global Transits as they are strictly location-dependent (Sunrise/Sunset).
             
         # 3. Jaimini Karakas
         karakas = calculate_jaimini_karakas(bodies)
@@ -1306,3 +1488,146 @@ def get_current_transits() -> list[dict]:
     except Exception as e:
         logger.error(f"Error calculating transits: {e}")
         return []
+
+# ============================================================================
+# SPECIAL TIMING CALCULATIONS (Muhurta/Kalam)
+# ============================================================================
+
+def calculate_special_times(
+    date_obj: date,
+    lat: float,
+    lon: float,
+    timezone_str: str = "UTC"
+) -> List[Dict]:
+    """
+    Calculate special timing periods like Rahu Kalam, Yamagandam, Gulika Kalam,
+    and Abhijit Muhurta for the given day.
+    """
+    
+    # 1. Get Sunrise/Sunset
+    tz = pytz.timezone(timezone_str)
+    
+    # Approx noon UTC for calculation
+    noon_utc = datetime.combine(date_obj, time(12, 0), tzinfo=tz).astimezone(timezone.utc)
+    jd_noon = swe.julday(noon_utc.year, noon_utc.month, noon_utc.day, 12.0)
+    
+    geopos = (lon, lat, 0)
+    res_rise = swe.rise_trans(
+        jd_noon, swe.SUN, swe.CALC_RISE | swe.BIT_DISC_CENTER, geopos
+    )
+    res_set = swe.rise_trans(
+        jd_noon, swe.SUN, swe.CALC_SET | swe.BIT_DISC_CENTER, geopos
+    )
+    
+    # Check for polar day/night errors (fallback)
+    # Swisseph returns (0, (val,)) on success
+    rise_ok = isinstance(res_rise, tuple) and res_rise[0] == 0
+    set_ok = isinstance(res_set, tuple) and res_set[0] == 0
+
+    if not rise_ok or not set_ok:
+        # Fallback: 6am to 6pm local
+        sunrise_dt = datetime.combine(date_obj, time(6,0), tz)
+        sunset_dt = datetime.combine(date_obj, time(18,0), tz)
+    else:
+        sunrise_jd = res_rise[1][0]
+        sunset_jd = res_set[1][0]
+        
+        # Convert to Local Datetime
+        def jd_to_dt(jd):
+            y, m, d, h_float = swe.revjul(jd)
+            h = int(h_float)
+            mn = int((h_float - h) * 60)
+            s = int(((h_float - h) * 60 - mn) * 60)
+            # UTC
+            dt_utc = datetime(y, m, d, h, mn, s, tzinfo=timezone.utc)
+            return dt_utc.astimezone(tz)
+
+        sunrise_dt = jd_to_dt(sunrise_jd)
+        sunset_dt = jd_to_dt(sunset_jd)
+    
+    day_duration = (sunset_dt - sunrise_dt).total_seconds()
+    segment_duration = day_duration / 8.0 # 8 parts for Kalams
+    
+    weekday = date_obj.weekday() # 0=Mon, 6=Sun
+    
+    # Mappings (Segment Index 1-8)
+    
+    # RAHU KALAM (Inauspicious)
+    # Mon:2, Tue:7, Wed:5, Thu:6, Fri:4, Sat:3, Sun:8
+    rahu_map = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
+    
+    # YAMAGANDAM (Inauspicious)
+    # Mon:4, Tue:3, Wed:2, Thu:1, Fri:7, Sat:6, Sun:5
+    yama_map = {0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6, 6: 5}
+    
+    # GULIKA KALAM (Inauspicious for new beginnings, good for repeated events)
+    # Mon:6, Tue:5, Wed:4, Thu:3, Fri:2, Sat:1, Sun:7
+    gulika_map = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 7}
+    
+    results = []
+    
+    # Helper
+    def add_period(name, seg_idx, quality, desc):
+        # seg_idx is 1-based (1..8)
+        start_sec = (seg_idx - 1) * segment_duration
+        end_sec = seg_idx * segment_duration
+        
+        start = sunrise_dt + timedelta(seconds=start_sec)
+        end = sunrise_dt + timedelta(seconds=end_sec)
+        
+        results.append({
+            "name": name,
+            "start_time": start.strftime("%I:%M %p"),
+            "end_time": end.strftime("%I:%M %p"),
+            "quality": quality,
+            "description": desc,
+            "start_dt": start.isoformat(),
+            "end_dt": end.isoformat()
+        })
+
+    # Add Kalams
+    add_period("Rahu Kalam", rahu_map[weekday], "Inauspicious", "Avoid new beginnings or travels.")
+    add_period("Yamagandam", yama_map[weekday], "Inauspicious", "Death-like time. Avoid auspicious acts.")
+    add_period("Gulika Kalam", gulika_map[weekday], "Neutral/Mixed", "Good for repeating actions, bad for start.")
+    
+    # ABHIJIT MUHURTA (Auspicious)
+    # Midday (local noon) +/- 24 mins (approx 1 muhurta centered)
+    # Actually it is the 8th Muhurta of 15 Muhurtas of daytime.
+    muhurta_len = day_duration / 15.0
+    abhijit_start = sunrise_dt + timedelta(seconds=muhurta_len * 7) # Start of 8th
+    abhijit_end = sunrise_dt + timedelta(seconds=muhurta_len * 8)   # End of 8th
+    
+    qual = "Auspicious"
+    desc = "Golden Moment. Good for all auspicious works."
+    if weekday == 2: # Wednesday
+        qual = "Neutral" # Weaker on Wed
+        desc += " (Weaker on Wednesday)"
+        
+    results.append({
+        "name": "Abhijit Muhurta",
+        "start_time": abhijit_start.strftime("%I:%M %p"),
+        "end_time": abhijit_end.strftime("%I:%M %p"),
+        "quality": qual,
+        "description": desc,
+        "start_dt": abhijit_start.isoformat(),
+        "end_dt": abhijit_end.isoformat()
+    })
+    
+    # BRAHMA MUHURTA (Pre-dawn)
+    # 2 Muhurtas before Sunrise -> 1.5h
+    # Note: Requires yesterday's sunset or just approx 96 mins before today's sunrise.
+    # We'll use approx relative to today's sunrise for simplicity in this function context.
+    brahma_start = sunrise_dt - timedelta(minutes=96)
+    brahma_end = sunrise_dt - timedelta(minutes=48)
+    
+    results.append({
+        "name": "Brahma Muhurta",
+        "start_time": brahma_start.strftime("%I:%M %p"),
+        "end_time": brahma_end.strftime("%I:%M %p"),
+        "quality": "Spiritual",
+        "description": "Best time for meditation and learning.",
+        "start_dt": brahma_start.isoformat(),
+        "end_dt": brahma_end.isoformat()
+    })
+
+    return results

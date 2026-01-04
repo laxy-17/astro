@@ -12,6 +12,7 @@ from .database import init_db, save_chart, list_charts, delete_chart, SavedChart
 from .integrations.vedic_astro_api import VedicAstroService
 import logging
 import os
+from .routes import auth, daily
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,6 +22,10 @@ app = FastAPI(
     description="Calculate Vedic astrological birth charts with Swiss Ephemeris",
     version="1.0.0"
 )
+
+# Include Routers
+app.include_router(auth.router)
+app.include_router(daily.router)
 
 # Initialize External Services
 vedic_service = VedicAstroService()
@@ -221,13 +226,15 @@ def get_extended_transits_endpoint():
         logger.error(f"Extended transits error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+from fastapi.responses import JSONResponse
+
 # Error handlers
 @app.exception_handler(ValueError)
 async def value_error_handler(request, exc):
-    return {
-        "detail": f"Invalid input: {str(exc)}",
-        "status": 422
-    }
+    return JSONResponse(
+        status_code=422,
+        content={"detail": f"Invalid input: {str(exc)}"}
+    )
 
 class SaveChartRequest(BaseModel):
     name: str

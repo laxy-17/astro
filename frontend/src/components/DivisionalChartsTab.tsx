@@ -51,22 +51,15 @@ export const DivisionalChartsTab: React.FC<Props> = ({ chartData }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Varga Selector */}
-            <div className="tab-container" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+            <div className="flex flex-wrap gap-2 pb-2">
                 {vargas.map(v => (
                     <button
                         key={v}
-                        className={`tab-button ${selectedVarga === v ? 'active' : ''}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${selectedVarga === v
+                                ? 'bg-violet-600 text-white shadow-sm'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
                         onClick={() => setSelectedVarga(v)}
-                        style={{
-                            padding: '8px 16px',
-                            border: 'none',
-                            background: selectedVarga === v ? '#673ab7' : '#f5f5f5',
-                            color: selectedVarga === v ? 'white' : '#333',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            marginRight: '8px',
-                            fontWeight: 'bold'
-                        }}
                     >
                         {v}
                     </button>

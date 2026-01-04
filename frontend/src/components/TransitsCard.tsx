@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getTransits, type TransitPlanet } from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export const TransitsCard: React.FC = () => {
     const [transits, setTransits] = useState<TransitPlanet[]>([]);

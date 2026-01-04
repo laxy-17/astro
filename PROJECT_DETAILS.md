@@ -2,19 +2,19 @@
 
 **Version**: 1.0.0
 **Date**: January 3, 2026
-**Status**: Feature Complete (Beta 1.5) - *Celestial Upgrade Applied*
+**Status**: Feature Complete (Beta 1.6) - *Sky Blue & Violet Theme Migration Complete*
 
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
 
-Recent major updates include a "Celestial" UI overhaul using Shadcn/UI, an interactive Dasha timeline, and rigorous accuracy verification against Gold Standard charts.
+Recent major updates include a serene "Sky Blue & Violet" UI migration, resolution of 500 Internal Server Errors in Daily Mentor/Timings, an interactive Dasha timeline, and rigorous accuracy verification against Gold Standard charts.
 
 ## 2. Technology Stack
 
 ### Frontend
 - **Framework**: React 18 (Vite)
 - **Language**: TypeScript
-- **Styling**: TailwindCSS (Custom "Cosmic" Dark Mode Theme, **Shadcn/UI components**)
+- **Styling**: TailwindCSS (Custom "Sky Blue & Violet" Theme, **Shadcn/UI components**)
 - **State Management**: React Hooks
 - **Routing**: React Router
 - **HTTP Client**: Axios
@@ -64,9 +64,9 @@ Recent major updates include a "Celestial" UI overhaul using Shadcn/UI, an inter
 3. **Frontend**: 
     - Renders North/South Indian Chart Styles (SVG/Canvas).
     - Displays interactive data tables and strength bars.
-    - **Panchanga**: Responsive Shadcn Cards with glass-panel aesthetics.
+    - **Panchanga**: Responsive Shadcn Cards with Sky Blue & Violet aesthetics.
     - **Dasha**: Interactive, expandable table with precise start/end dates.
-    - Streaming markdown response for AI Mentor with dark-mode support.
+    - Streaming markdown response for AI Mentor with light-themed contrast support.
 
 ### Key Features Implemented
 - **Accuracy**: Verified against standard reference charts (Steve Jobs, Mark Zuckerberg) and user cases (LV).

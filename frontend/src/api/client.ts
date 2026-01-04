@@ -102,6 +102,16 @@ export interface KaranaData {
   number: number;
 }
 
+export interface SpecialTime {
+  name: string;
+  start_time: string;
+  end_time: string;
+  quality: string;
+  description: string;
+  start_dt?: string;
+  end_dt?: string;
+}
+
 export interface Panchanga {
   tithi: TithiData;
   vara: string;
@@ -131,6 +141,8 @@ export interface ChartResponse {
   panchanga?: Panchanga;
   strengths?: Record<string, number>;
   divisional_charts?: Record<string, VargaChart>;
+  special_times?: SpecialTime[];
+  ayanamsa?: number;
 }
 
 export interface SavedChart {
@@ -303,6 +315,60 @@ export const listCharts = async (): Promise<SavedChart[]> => {
 
 export const deleteChart = async (id: number): Promise<any> => {
   const response = await axiosInstance.delete(`/charts/${id}`);
+  return response.data;
+};
+
+// Daily Mentor Types
+export interface DailyEnergy {
+  score: number;
+  label: string;
+  color: 'Green' | 'Amber' | 'Red';
+  auspiciousness: string;
+  vibe: string;
+  breakdown: {
+    panchanga: number;
+    moon: number;
+    dasha: number;
+    vara: number;
+  };
+}
+
+export interface SpecialTime {
+  name: string;
+  start_time: string;
+  end_time: string;
+  quality: string;
+  description: string;
+}
+
+export interface Hora {
+  start_time: string;
+  end_time: string;
+  ruler: string;
+  quality: string;
+  duration_minutes: number;
+}
+
+export interface DailyMentorResponse {
+  date: string;
+  energy: DailyEnergy;
+  theme: string;
+  hora_timeline: Hora[];
+  special_times: SpecialTime[];
+  panchanga_summary: {
+    tithi: string;
+    nakshatra: string;
+    vara: string;
+    yoga?: string;
+    karana?: string;
+  };
+}
+
+export const getDailyMentor = async (details: BirthDetails, date: string): Promise<DailyMentorResponse> => {
+  // Use POST to send complex birth details body + Query for current date
+  const response = await axiosInstance.post<DailyMentorResponse>('/daily/mentor', details, {
+    params: { current_date: date }
+  });
   return response.data;
 };
 

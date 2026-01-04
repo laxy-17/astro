@@ -41,7 +41,7 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
     return (
         <div className="w-full h-full flex flex-col items-center bg-transparent">
             <div className="w-full h-full relative aspect-square">
-                <div className="grid w-full h-full grid-cols-4 grid-rows-4 gap-[2px] bg-neutral-300 dark:bg-white/10 border-2 border-neutral-300 dark:border-white/10">
+                <div className="grid w-full h-full grid-cols-4 grid-rows-4 gap-[1px] bg-skyblue-200/50 border border-skyblue-200/50 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(91,163,208,0.08)]">
                     {/* Pisces (0,0) */}
                     <ChartBox sign="Pisces" planets={getPlanetsInSign("Pisces")} />
                     {/* Aries (0,1) */}
@@ -54,10 +54,10 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
                     {/* Aquarius (1,0) */}
                     <ChartBox sign="Aquarius" planets={getPlanetsInSign("Aquarius")} />
                     {/* Center Space (1,1 span 2x2) */}
-                    <div style={{ gridColumn: '2 / 4', gridRow: '2 / 4', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ gridColumn: '2 / 4', gridRow: '2 / 4', background: '#F8FCFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
-                            <div className="text-lg font-bold text-primary">South Indian</div>
-                            <div className="text-sm text-muted-foreground">Rashi Chakra</div>
+                            <div className="text-lg font-bold text-neutral-500">South Indian</div>
+                            <div className="text-sm text-neutral-400">Rashi Chakra</div>
                         </div>
                     </div>
                     {/* Cancer (1,3) */}
@@ -88,20 +88,20 @@ const ChartBox: React.FC<{ sign: string, planets: string[] }> = ({ sign, planets
     const isAscendant = planets.includes('ASC');
 
     return (
-        <div className={`p-1 relative flex flex-wrap gap-1 content-start overflow-hidden ${isAscendant ? 'bg-red-500/10' : 'bg-card'}`}>
+        <div className={`p-1 relative flex flex-wrap gap-1 content-start overflow-hidden ${isAscendant ? 'bg-status-error/5' : 'bg-white'}`}>
             {/* Ascendant Marker Border */}
             {isAscendant && (
-                <div className="absolute inset-0 border-2 border-dashed border-red-500/50 pointer-events-none" />
+                <div className="absolute inset-0 border border-dashed border-status-error/30" />
             )}
 
             {/* Sign Label */}
-            <div className="absolute bottom-0.5 right-1 text-[0.6rem] text-muted-foreground uppercase tracking-wider">
+            <div className="absolute bottom-0.5 right-1 text-[0.6rem] text-neutral-400 uppercase tracking-wider">
                 {sign}
             </div>
 
             {/* Planets */}
             {planets.map(p => (
-                <span key={p} className={`text-xs font-bold ${p === 'ASC' ? 'text-red-500' : 'text-foreground'}`}>
+                <span key={p} className={`text-xs font-bold ${p === 'ASC' ? 'text-status-error' : 'text-neutral-500'}`}>
                     {p}
                 </span>
             ))}

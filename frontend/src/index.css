@@ -4,34 +4,42 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 195 44% 94%;
+    /* #E8F4F8 */
+    --foreground: 210 9% 19%;
+    /* #2D3436 */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 210 9% 19%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    --popover-foreground: 210 9% 19%;
+    --primary: 203 58% 59%;
+    /* #5BA3D0 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 256 25% 60%;
+    /* #8B7AB8 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 197 44% 88%;
+    /* #D4E8F0 */
+    --muted-foreground: 210 9% 45%;
+    /* #636E72 approx */
+    --accent: 256 25% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 197 44% 88%;
+    /* #D4E8F0 */
+    --input: 197 44% 88%;
+    --ring: 203 58% 59%;
+    --radius: 0.75rem;
 
     /* Custom Colors - Light Mode */
-    --cosmic-gold: #D4AF37;
-    --astral-blue: #2563EB;
-    --astral-red: #DC143C;
-    --text-primary: #1F2937;
-    --text-secondary: #6B7280;
-    --text-tertiary: #9CA3AF;
+    --cosmic-gold: #8B7AB8;
+    /* Using Violet as the "Accent" gold */
+    --astral-blue: #5BA3D0;
+    --astral-red: #D97777;
+    --text-primary: #2D3436;
+    --text-secondary: #636E72;
+    --text-tertiary: #7BB8DC;
   }
 
   .dark {
@@ -75,9 +83,10 @@
   }
 }
 
-/* Custom Utilities for Celestial Theme (Preserved) */
+/* Custom Utilities for Sky Blue & Violet Theme */
 .glass-panel {
-  @apply bg-background/80 backdrop-blur-md border border-border shadow-md dark:bg-cosmic-glass dark:border-white/10 dark:shadow-xl;
+  @apply bg-white/90 backdrop-blur-md border border-skyblue-200/50 shadow-md;
+  box-shadow: 0 2px 8px rgba(91, 163, 208, 0.08);
 }
 
 .text-gold {

@@ -1,11 +1,16 @@
 fastapi
 uvicorn
 pydantic
-swisseph
+sqlalchemy
+python-dotenv
 pyswisseph
 timezonefinder
 pytz
 requests
 google-genai
-python-dotenv
 googlemaps==4.10.0
+# Auth & Database
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

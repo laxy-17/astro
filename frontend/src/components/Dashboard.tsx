@@ -16,18 +16,22 @@ import { InsightsPanel } from './InsightsPanel';
 import type { LocationDetails } from './LocationSearchInput';
 import { LocationSearchInput } from './LocationSearchInput';
 
+import { DailyMentor } from './DailyMentor';
+import { TodaysTimings } from './TodaysTimings';
+
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, Calendar, BookOpen, User, Save, FileText, Library } from "lucide-react"
+import { Sparkles, BookOpen, User, Save, FileText, Library, Clock, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface PersistentFormProps {
     onSuccess: (data: ChartResponse, details: BirthDetails) => void;
     ayanamsa: string;
+    details?: BirthDetails | null;
 }
 
-const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) => {
+const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, details: externalDetails }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -40,8 +44,12 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
         ayanamsa_mode: ayanamsa
     });
 
-    // Load from localStorage on mount
+    // Load from localStorage on mount OR sync with externalDetails
     useEffect(() => {
+        if (externalDetails) {
+            setDetails(externalDetails);
+            return;
+        }
         const saved = localStorage.getItem('last_birth_details');
         if (saved) {
             try {
@@ -51,7 +59,7 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                 console.error("Failed to parse saved details", e);
             }
         }
-    }, []);
+    }, [externalDetails, ayanamsa]);
 
     // Save to localStorage whenever details change
     const handleChange = (field: keyof BirthDetails, value: string | number) => {
@@ -99,12 +107,12 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
 
     return (
         <div className="space-y-4">
-            <h3 className="text-lg font-bold text-cosmic-starlight flex items-center gap-2">
+            <h3 className="text-lg font-bold text-violet-600 flex items-center gap-2">
                 <span className="text-xl">✨</span> Birth Details
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                    <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+                    <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error text-sm">
                         {error}
                     </div>
                 )}
@@ -116,7 +124,7 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                         required
                         value={details.date}
                         onChange={(e) => handleChange('date', e.target.value)}
-                        className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
+                        className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30"
                     />
                 </div>
 
@@ -127,7 +135,7 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                         required
                         value={details.time}
                         onChange={(e) => handleChange('time', e.target.value)}
-                        className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-cosmic-nebula"
+                        className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30"
                     />
                 </div>
 
@@ -148,7 +156,7 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="flex-1 bg-cosmic-nebula hover:bg-purple-700 text-white font-bold"
+                        className="flex-1 bg-skyblue-500 hover:bg-skyblue-600 text-white font-bold shadow-md shadow-skyblue-500/20"
                     >
                         {loading ? 'Calculating...' : 'Calculate Chart'}
                     </Button>
@@ -156,7 +164,7 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa }) 
                         type="button"
                         variant="secondary"
                         onClick={handleReset}
-                        className="bg-white/10 hover:bg-white/20 text-white"
+                        className="bg-skyblue-50 hover:bg-skyblue-100 text-skyblue-600 border border-skyblue-200"
                         title="Reset Form"
                     >
                         ↺
@@ -178,7 +186,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
     const [ayanamsa, setAyanamsa] = useState<string>('LAHIRI');
 
     // Main Tabs State
-    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor'>('charts');
+    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor' | 'timings'>('mentor');
 
     // Sub-states for Charts Tab
     const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
@@ -299,35 +307,35 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
     };
 
     return (
-        <div className="min-h-screen bg-background dark:bg-[url('/images/backgrounds/stars-bg.png')] dark:bg-cover dark:bg-fixed text-foreground font-sans">
+        <div className="min-h-screen bg-skyblue-100 text-neutral-500 font-sans">
             {/* Top Header */}
-            <header className="flex items-center justify-between p-4 border-b border-border bg-background/80 dark:bg-cosmic-void/80 backdrop-blur-md sticky top-0 z-50">
+            <header className="flex items-center justify-between p-4 border-b border-skyblue-200/50 bg-skyblue-100/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cosmic-nebula to-cosmic-starlight flex items-center justify-center shadow-glow">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-400 to-skyblue-500 flex items-center justify-center shadow-[0_2px_8px_rgba(139,122,184,0.3)]">
                         <span className="text-white font-bold text-lg">8</span>
                     </div>
-                    <span className="text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-muted-foreground">
+                    <span className="text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-skyblue-600">
                         8STRO
                     </span>
                     {currentDetails && (
-                        <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/5 rounded-lg border border-white/5">
-                            <span className="text-xs text-muted-foreground uppercase tracking-wider">Current Chart</span>
-                            <span className="text-sm font-medium text-cosmic-starlight">
+                        <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/40 rounded-lg border border-skyblue-200/30">
+                            <span className="text-xs text-neutral-400 uppercase tracking-wider">Current Chart</span>
+                            <span className="text-sm font-medium text-violet-500">
                                 {currentDetails.date} • {currentDetails.time}
                             </span>
                         </div>
                     )}
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowLibrary(true)} className="bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10">
+                    <Button size="sm" onClick={() => setShowLibrary(true)} className="bg-violet-100 hover:bg-violet-200 text-violet-600 border border-violet-200">
                         <Library className="w-4 h-4 mr-2" /> Library
                     </Button>
                     {chartData && (
                         <>
-                            <Button size="sm" onClick={handleSaveChart} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/30">
+                            <Button size="sm" onClick={handleSaveChart} className="bg-status-success/10 hover:bg-status-success/20 text-status-success border border-status-success/30">
                                 <Save className="w-4 h-4 mr-2" /> Save
                             </Button>
-                            <Button size="sm" onClick={handleDownloadPDF} className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-600/30">
+                            <Button size="sm" onClick={handleDownloadPDF} className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning border border-status-warning/30">
                                 <FileText className="w-4 h-4 mr-2" /> PDF
                             </Button>
                         </>
@@ -341,7 +349,11 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                 <aside className="space-y-6">
                     <Card className="glass-panel border-border bg-card/50">
                         <CardContent className="p-6">
-                            <PersistentForm onSuccess={handleChartCalculated} ayanamsa={ayanamsa} />
+                            <PersistentForm
+                                onSuccess={handleChartCalculated}
+                                ayanamsa={ayanamsa}
+                                details={currentDetails}
+                            />
                         </CardContent>
                     </Card>
 
@@ -351,6 +363,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                 ayanamsa={ayanamsa}
                                 onAyanamsaChange={handleAyanamsaChange}
                             />
+
                         </CardContent>
                     </Card>
                 </aside>
@@ -360,28 +373,73 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
 
 
                     {/* Tabs Navigation */}
-                    <Tabs defaultValue="charts" className="w-full" onValueChange={(val) => setActiveTab(val as any)}>
-                        <TabsList className="grid w-full grid-cols-5 bg-muted border border-border h-12 p-1 mb-6">
-                            <TabsTrigger value="charts" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
-                                <Sparkles className="w-4 h-4 mr-2" /> Charts
+                    <Tabs defaultValue="mentor" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-6 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm">
+                            <TabsTrigger value="mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                Mentor
                             </TabsTrigger>
-                            <TabsTrigger value="panchanga" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
-                                <Calendar className="w-4 h-4 mr-2" /> Panchanga
+                            <TabsTrigger value="timings" className="data-[state=active]:bg-skyblue-500 data-[state=active]:text-white rounded-lg transition-all">
+                                <Clock className="w-4 h-4 mr-2" />
+                                Timings
                             </TabsTrigger>
-                            <TabsTrigger value="dashas" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
+                            <TabsTrigger value="charts" className="data-[state=active]:bg-violet-400 data-[state=active]:text-white rounded-lg transition-all">
+                                <User className="w-4 h-4 mr-2" /> Charts
+                            </TabsTrigger>
+                            <TabsTrigger value="dashas" className="data-[state=active]:bg-skyblue-400 data-[state=active]:text-white rounded-lg transition-all">
                                 <BookOpen className="w-4 h-4 mr-2" /> Dashas
                             </TabsTrigger>
-                            <TabsTrigger value="transits" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
-                                <Sparkles className="w-4 h-4 mr-2" /> Transits
+                            <TabsTrigger value="transits" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white rounded-lg transition-all">
+                                <div className="w-4 h-4 mr-2">🪐</div>
+                                Transits
                             </TabsTrigger>
-                            <TabsTrigger value="mentor" className="data-[state=active]:bg-cosmic-nebula data-[state=active]:text-white">
-                                <User className="w-4 h-4 mr-2" /> AI Mentor
+                            <TabsTrigger value="panchanga" className="data-[state=active]:bg-skyblue-600 data-[state=active]:text-white rounded-lg transition-all">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Calendar
                             </TabsTrigger>
                         </TabsList>
 
+                        {/* TAB 0: MENTOR */}
+                        <TabsContent value="mentor" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {currentDetails ? (
+                                <div className="space-y-8">
+                                    <DailyMentor birthDetails={currentDetails} />
+
+                                    <div className="pt-6 border-t border-skyblue-200/50">
+                                        <h3 className="text-xl font-bold text-neutral-500 px-2 mb-4">Deep Insights</h3>
+                                        <InsightsPanel
+                                            prediction={prediction}
+                                            dosha={dosha}
+                                            coreInsights={coreInsights}
+                                            loading={insightsLoading}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="glass-panel p-12 text-center space-y-4">
+                                    <div className="text-6xl animate-pulse">✨</div>
+                                    <h3 className="text-2xl font-bold text-neutral-500">Your Daily Guide Awaits</h3>
+                                    <p className="text-neutral-400 max-w-md mx-auto">
+                                        Enter your birth details in the panel on the left to unlock personalized daily energy scores, hora timings, and guidance.
+                                    </p>
+                                </div>
+                            )}
+                        </TabsContent>
+
+                        {/* TAB 0.5: TIMINGS */}
+                        <TabsContent value="timings" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {currentDetails ? (
+                                <TodaysTimings birthDetails={currentDetails} />
+                            ) : (
+                                <div className="glass-panel p-12 text-center text-muted-foreground">
+                                    Please enter birth details first.
+                                </div>
+                            )}
+                        </TabsContent>
+
                         {/* TAB 1: CHARTS */}
                         <TabsContent value="charts" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {activeTab === 'charts' && (
+                            {(
                                 <div className="space-y-6">
                                     {currentDetails && <BirthParticulars details={currentDetails} />}
 
@@ -393,7 +451,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => setChartStyle('south')}
-                                                    className={chartStyle === 'south' ? 'bg-cosmic-nebula text-white' : 'text-muted-foreground'}
+                                                    className={chartStyle === 'south' ? 'bg-skyblue-500 text-white' : 'text-neutral-400 hover:bg-skyblue-50'}
                                                 >
                                                     South Indian
                                                 </Button>
@@ -401,7 +459,7 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => setChartStyle('north')}
-                                                    className={chartStyle === 'north' ? 'bg-cosmic-nebula text-white' : 'text-muted-foreground'}
+                                                    className={chartStyle === 'north' ? 'bg-skyblue-500 text-white' : 'text-neutral-400 hover:bg-skyblue-50'}
                                                 >
                                                     North Indian
                                                 </Button>
@@ -409,13 +467,13 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => setDivisionalMode(!divisionalMode)}
-                                                    className={`ml-auto ${divisionalMode ? 'bg-cosmic-starlight text-black' : 'text-muted-foreground'}`}
+                                                    className={`ml-auto ${divisionalMode ? 'bg-violet-500 text-white' : 'text-neutral-400 hover:bg-violet-50'}`}
                                                 >
                                                     {divisionalMode ? 'Show Rashi' : 'Show Vargas'}
                                                 </Button>
                                             </div>
 
-                                            <Card className="glass-panel overflow-hidden border-border bg-card/40 p-4 aspect-square flex items-center justify-center relative">
+                                            <Card className={`glass-panel border-border bg-card/40 p-4 relative ${divisionalMode ? 'flex flex-col h-auto min-h-[500px]' : 'aspect-square flex items-center justify-center overflow-hidden'}`}>
                                                 {chartData ? (
                                                     !divisionalMode ? (
                                                         chartStyle === 'south' ? (
@@ -466,11 +524,12 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                                             data={chartData.panchanga}
                                             dashas={chartData.dashas}
                                             birthDate={currentDetails.date}
+                                            specialTimes={chartData.special_times}
+                                            ayanamsa={chartData.ayanamsa}
                                         />
                                     ) : (
                                         <div className="p-10 text-center text-muted-foreground">Calculate chart first</div>
-                                    )}
-                                </Card>
+                                    )}                   </Card>
                             )}
                         </TabsContent>
 
@@ -500,43 +559,35 @@ export const Dashboard: React.FC<Props> = ({ chartData, onCalculate }) => {
                             )}
                         </TabsContent>
 
-                        {/* TAB 5: MENTOR */}
-                        <TabsContent value="mentor" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {activeTab === 'mentor' && (
-                                <InsightsPanel
-                                    prediction={prediction}
-                                    dosha={dosha}
-                                    coreInsights={coreInsights}
-                                    loading={insightsLoading}
-                                />
-                            )}
-                        </TabsContent>
+
                     </Tabs>
                 </main>
             </div>
 
             {/* Library Modal */}
-            {showLibrary && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-2xl bg-card border border-white/10 rounded-xl shadow-2xl relative overflow-hidden">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowLibrary(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                        >
-                            ✕
-                        </Button>
-                        <ChartLibrary
-                            onLoad={(details) => {
-                                setShowLibrary(false);
-                                handleLoadChart(details);
-                            }}
-                            onClose={() => setShowLibrary(false)}
-                        />
+            {
+                showLibrary && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-500/40 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-2xl bg-white border border-skyblue-200/50 rounded-xl shadow-[0_10px_40px_rgba(91,163,208,0.15)] relative overflow-hidden">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowLibrary(false)}
+                                className="absolute top-4 right-4 text-neutral-300 hover:text-neutral-500"
+                            >
+                                ✕
+                            </Button>
+                            <ChartLibrary
+                                onLoad={(details) => {
+                                    setShowLibrary(false);
+                                    handleLoadChart(details);
+                                }}
+                                onClose={() => setShowLibrary(false)}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

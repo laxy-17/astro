@@ -52,27 +52,37 @@ export const groupDashas = (rows: DashaRow[]): DashaGroup[] => {
     let currentGroup: DashaGroup | null = null;
 
     rows.forEach(row => {
-        // Check if it's a sub-period (contains hyphen)
-        if (row.lord.includes('-')) {
-            // It's a sub-period (e.g. Venus-Sun)
-            if (currentGroup) {
-                currentGroup.subPeriods.push({ ...row, isSubPeriod: true });
-            }
-        } else {
-            // It's a major period (Mahadasha)
-            // Push previous group if exists
+        // Dasha string format from backend is "MD-AD" (e.g. "Sun-Moon")
+        const parts = row.lord.split('-');
+        const mdName = parts[0];
+        // const adName = parts[1]; // Not needed here
+
+        // If we don't have a group, or the current group is for a different MD, start a new one
+        if (!currentGroup || currentGroup.lord !== mdName) {
+            // Push previous
             if (currentGroup) {
                 groups.push(currentGroup);
             }
-            // Start new group
+
+            // Init new group
             currentGroup = {
-                lord: row.lord,
-                startDate: row.startDate,
-                endDate: row.endDate,
-                duration: row.duration,
+                lord: mdName,
+                startDate: row.startDate, // Start of first sub-period is start of MD
+                endDate: row.endDate,     // Will update as we go
+                duration: 0,              // Calc sum
                 subPeriods: []
             };
         }
+
+        // Add this row as a sub-period
+        currentGroup.subPeriods.push({
+            ...row,
+            isSubPeriod: true
+        });
+
+        // Update Group Totals
+        currentGroup.endDate = row.endDate; // Extend end date to current sub-period end
+        currentGroup.duration += row.duration;
     });
 
     // Push last group

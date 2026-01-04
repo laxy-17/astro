@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { listCharts, deleteChart, type SavedChart, type BirthDetails } from '../api/client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardTitle, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area" // Assuming ScrollArea is installed? If not, standard div overflow is fine.
+
 import { Trash2, FolderOpen, Search, X } from "lucide-react"
 
 interface Props {
@@ -49,7 +49,11 @@ export const ChartLibrary: React.FC<Props> = ({ onLoad, onClose }) => {
             time: chart.time,
             latitude: chart.latitude,
             longitude: chart.longitude,
-            ayanamsa_mode: chart.ayanamsa_mode
+            ayanamsa_mode: chart.ayanamsa_mode,
+            location_city: chart.location_city,
+            location_state: chart.location_state,
+            location_country: chart.location_country,
+            location_timezone: chart.location_timezone
         };
         onLoad(details);
         onClose();
@@ -132,9 +136,9 @@ export const ChartLibrary: React.FC<Props> = ({ onLoad, onClose }) => {
                                 <div className="font-medium text-foreground group-hover:text-primary transition-colors">
                                     {chart.name}
                                 </div>
-                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
                                     <span>{chart.date}</span>
-                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                    <span className="w-1 h-1 rounded-full bg-slate-400" />
                                     <span>{chart.time}</span>
                                 </div>
                             </div>

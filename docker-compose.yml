@@ -3,16 +3,16 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: vedic_backend
     volumes:
-      - ./backend:/app
-      - ./ephemeris:/app/ephemeris
+      - ./backend/app:/app/app
+      - ./backend/charts.db:/app/charts.db
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://vedic_user:vedic_password@db:5432/vedic_db
+      - DATABASE_URL=postgresql://postgres:password@db:5432/vedic_db
       - EPHEME_PATH=/app/ephemeris
     depends_on:
       - db
@@ -22,13 +22,18 @@ services:
     image: postgres:15-alpine
     container_name: vedic_db
     environment:
-      - POSTGRES_USER=vedic_user
-      - POSTGRES_PASSWORD=vedic_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
       - POSTGRES_DB=vedic_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

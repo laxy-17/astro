@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import date, time
+from datetime import date, time, datetime
 from typing import List, Optional, Any
 
 class BirthDetails(BaseModel):
@@ -61,6 +61,15 @@ class KaranaData(BaseModel):
     name: str
     number: int # 1-60
 
+class SpecialTime(BaseModel):
+    name: str
+    start_time: str
+    end_time: str
+    quality: str
+    description: str
+    start_dt: Optional[str] = None
+    end_dt: Optional[str] = None
+
 class Panchanga(BaseModel):
     tithi: TithiData
     nakshatra: NakshatraData
@@ -84,8 +93,10 @@ class ChartResponse(BaseModel):
     ascendant_sign: str
     planets: List[PlanetPosition]
     houses: List[House]
-    dashas: List[Any]
+    dashas: List[DashaPeriod]
     panchanga: Optional[Panchanga] = None
+    special_times: Optional[List[SpecialTime]] = None
+    ayanamsa: Optional[float] = None
     
     # Phase 2 Enhancements
     strengths: Optional[dict[str, float]] = None # Planet -> Score (0-20)
@@ -95,3 +106,43 @@ class ChartResponse(BaseModel):
     sunrise_time: Optional[str] = None
     sunset_time: Optional[str] = None
     mandhi_time_local: Optional[str] = None
+
+# --- AUTH MODELS ---
+class UserBase(BaseModel):
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserLogin(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# --- DAILY MENTOR MODELS ---
+class Hora(BaseModel):
+    index: int
+    start_time: str
+    end_time: str
+    ruler: str # Planet Name
+    quality: str # "Good", "Average", "Bad" (or specific energy)
+    color: Optional[str] = None
+    activity_suggestion: Optional[str] = None
+
+class DailyTimeline(BaseModel):
+    date: str
+    location: str
+    sunrise: str
+    sunset: str
+    horas: List[Hora]
+
+

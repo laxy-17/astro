@@ -1,13 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import type { Panchanga, Dasha } from '../api/client';
+import type { Panchanga, Dasha, SpecialTime } from '../api/client';
 import { calculateDashaDates } from '../utils/astroUtils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { AlertTriangle, Sparkles, Sun } from "lucide-react";
 
 interface Props {
     data: Panchanga;
     dashas: Dasha[];
     birthDate: string;
+    specialTimes?: SpecialTime[];
+    ayanamsa?: number;
 }
 
 // Helper for meanings
@@ -34,7 +37,7 @@ const getVaraMeaning = (_name: string) => {
     return 'General energy of the day';
 };
 
-export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate }) => {
+export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate, specialTimes = [], ayanamsa }) => {
     const [today] = useState(new Date());
 
     const dashaInfo = useMemo(() => {
@@ -209,6 +212,73 @@ export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate }) => 
                 </Card>
 
             </div>
+
+            {/* Muhurta & Special Timings Section */}
+            <Card className="glass-panel border-white/10 bg-black/40 overflow-hidden">
+                <CardHeader className="pb-4 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <Sun className="w-5 h-5 text-amber-400" />
+                        <div>
+                            <CardTitle className="text-lg font-bold text-white">Muhurta & Important Timings</CardTitle>
+                            <CardDescription className="text-muted-foreground">Auspicious and inauspicious time periods</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Auspicious Column */}
+                        <div className="space-y-4">
+                            <h4 className="text-green-400 font-bold flex items-center gap-2">
+                                <Sparkles className="w-4 h-4" /> Auspicious Times
+                            </h4>
+                            <div className="space-y-3">
+                                {specialTimes.filter(t => t.quality === 'Auspicious').map((st, idx) => (
+                                    <div key={idx} className="p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-2">
+                                        <div className="text-green-300 font-bold">{st.name}</div>
+                                        <div className="text-lg font-medium text-white">{st.start_time} - {st.end_time}</div>
+                                        <div className="text-xs text-green-200/60">{st.description}</div>
+                                    </div>
+                                ))}
+                                {specialTimes.filter(t => t.quality === 'Auspicious').length === 0 && (
+                                    <p className="text-sm text-muted-foreground italic">No specific auspicious timings highlighted for this window.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Inauspicious Column */}
+                        <div className="space-y-4">
+                            <h4 className="text-red-400 font-bold flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" /> Inauspicious Times
+                            </h4>
+                            <div className="space-y-3">
+                                {specialTimes.filter((t: SpecialTime) => ['Inauspicious', 'Neutral/Mixed'].includes(t.quality)).map((st: SpecialTime, idx: number) => {
+                                    const colorClass = st.name === 'Rahu Kalam' ? 'border-red-500/30 bg-red-500/5 text-red-300' :
+                                        st.name === 'Yama Ganda' ? 'border-orange-500/30 bg-orange-500/5 text-orange-300' :
+                                            'border-yellow-500/30 bg-yellow-500/5 text-yellow-300';
+
+                                    return (
+                                        <div key={idx} className={`p-4 rounded-xl border ${colorClass} space-y-2`}>
+                                            <div className="font-bold">{st.name}</div>
+                                            <div className="text-lg font-medium text-white">{st.start_time} - {st.end_time}</div>
+                                            <div className="text-xs opacity-70">{st.description}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+
+                {/* Ayanamsha Display */}
+                {ayanamsa !== undefined && (
+                    <div className="p-6 bg-muted/30 border-t border-white/5">
+                        <div className="text-sm font-medium text-muted-foreground mb-2">Ayanamsha (Lahiri)</div>
+                        <div className="text-4xl font-mono text-white tracking-tight">
+                            {ayanamsa.toFixed(6)}°
+                        </div>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 };
