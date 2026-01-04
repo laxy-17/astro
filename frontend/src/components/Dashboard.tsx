@@ -11,21 +11,19 @@ import { DivisionalChartsTab } from './DivisionalChartsTab';
 import { ChartLibrary } from './ChartLibrary';
 import { generatePDF } from '../utils/pdfGenerator';
 import { BirthParticulars } from './BirthParticulars';
-import { PanchangaPanel } from './PanchangaPanel';
 import { TransitsTab } from './TransitsTab';
 import { InsightsPanel } from './InsightsPanel';
 import { LocationSelector } from './LocationSelector';
 import type { LocationData } from '../api/client';
 
 import { DailyMentor } from './DailyMentor';
-import { TodaysTimings } from './TodaysTimings';
-import { DailyPanchangaDashboard } from './DailyPanchangaDashboard';
+import { UnifiedPanchanga } from './UnifiedPanchanga';
 import { MapPin } from 'lucide-react';
 
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, BookOpen, User, Save, FileText, Library, Clock, Calendar } from "lucide-react"
+import { Sparkles, BookOpen, User, Save, FileText, Library } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface PersistentFormProps {
@@ -197,12 +195,12 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
     const [ayanamsa, setAyanamsa] = useState<string>(initialDetails?.ayanamsa_mode || 'LAHIRI');
 
     // Main Tabs State
-    const [activeTab, setActiveTab] = useState<'charts' | 'panchanga' | 'dashas' | 'transits' | 'mentor' | 'timings' | 'daily-panchanga'>('mentor');
+    const [activeTab, setActiveTab] = useState<'charts' | 'unified-panchang' | 'dashas' | 'transits' | 'mentor'>('mentor');
 
     // Sync activeView prop with activeTab state
     useEffect(() => {
         if (activeView === 'panchang') {
-            setActiveTab('daily-panchanga');
+            setActiveTab('unified-panchang');
         }
     }, [activeView]);
 
@@ -263,6 +261,8 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
             setInsightsLoading(false);
         }
     };
+
+
 
     const handleAyanamsaChange = async (newMode: string) => {
         setAyanamsa(newMode);
@@ -371,11 +371,11 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                                 <Sparkles className="w-4 h-4 mr-2" /> Daily Mentor
                             </Button>
                             <Button
-                                variant={activeTab === 'daily-panchanga' ? 'secondary' : 'ghost'}
+                                variant={activeTab === 'unified-panchang' ? 'secondary' : 'ghost'}
                                 className="w-full justify-start text-violet-700 hover:text-violet-800 hover:bg-violet-50"
-                                onClick={() => setActiveTab('daily-panchanga')}
+                                onClick={() => setActiveTab('unified-panchang')}
                             >
-                                <MapPin className="w-4 h-4 mr-2" /> Local Panchang
+                                <MapPin className="w-4 h-4 mr-2" /> Panchang
                             </Button>
                         </CardContent>
                     </Card>
@@ -412,13 +412,9 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                                 <Sparkles className="w-4 h-4 mr-2" />
                                 Mentor
                             </TabsTrigger>
-                            <TabsTrigger value="daily-panchanga" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                            <TabsTrigger value="unified-panchang" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
                                 <MapPin className="w-4 h-4 mr-2" />
                                 Panchang
-                            </TabsTrigger>
-                            <TabsTrigger value="timings" className="data-[state=active]:bg-skyblue-500 data-[state=active]:text-white rounded-lg transition-all">
-                                <Clock className="w-4 h-4 mr-2" />
-                                Timings
                             </TabsTrigger>
                             <TabsTrigger value="charts" className="data-[state=active]:bg-violet-400 data-[state=active]:text-white rounded-lg transition-all">
                                 <User className="w-4 h-4 mr-2" /> Charts
@@ -430,20 +426,16 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                                 <div className="w-4 h-4 mr-2">🪐</div>
                                 Transits
                             </TabsTrigger>
-                            <TabsTrigger value="panchanga" className="data-[state=active]:bg-skyblue-600 data-[state=active]:text-white rounded-lg transition-all">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Calendar
-                            </TabsTrigger>
                         </TabsList>
 
                         {/* TAB 0: MENTOR */}
-                        <TabsContent value="mentor" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <TabsContent value="mentor" className="space-y-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {currentDetails ? (
-                                <div className="space-y-8">
+                                <div className="space-y-1">
                                     <DailyMentor birthDetails={currentDetails} />
 
-                                    <div className="pt-6 border-t border-skyblue-200/50">
-                                        <h3 className="text-xl font-bold text-neutral-500 px-2 mb-4">Deep Insights</h3>
+                                    <div>
+
                                         <InsightsPanel
                                             prediction={prediction}
                                             dosha={dosha}
@@ -463,14 +455,10 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                             )}
                         </TabsContent>
 
-                        {/* TAB 0.5: TIMINGS */}
-                        <TabsContent value="timings" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {currentDetails ? (
-                                <TodaysTimings birthDetails={currentDetails} />
-                            ) : (
-                                <div className="glass-panel p-12 text-center text-muted-foreground">
-                                    Please enter birth details first.
-                                </div>
+                        {/* TAB 2: UNIFIED PANCHANG */}
+                        <TabsContent value="unified-panchang" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {activeTab === 'unified-panchang' && (
+                                <UnifiedPanchanga birthDetails={currentDetails} />
                             )}
                         </TabsContent>
 
@@ -552,23 +540,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                             )}
                         </TabsContent>
 
-                        {/* TAB 2: PANCHANGA */}
-                        <TabsContent value="panchanga" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {activeTab === 'panchanga' && (
-                                <Card className="glass-panel border-white/10 bg-black/40">
-                                    {chartData?.panchanga && currentDetails ? (
-                                        <PanchangaPanel
-                                            data={chartData.panchanga}
-                                            dashas={chartData.dashas}
-                                            birthDate={currentDetails.date}
-                                            specialTimes={chartData.special_times}
-                                            ayanamsa={chartData.ayanamsa}
-                                        />
-                                    ) : (
-                                        <div className="p-10 text-center text-muted-foreground">Calculate chart first</div>
-                                    )}                   </Card>
-                            )}
-                        </TabsContent>
+
 
                         {/* TAB 3: DASHAS */}
                         <TabsContent value="dashas" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -598,9 +570,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
 
                         {/* TAB 5: DAILY PANCHANGA */}
                         <TabsContent value="daily-panchanga" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {activeTab === 'daily-panchanga' && (
-                                <DailyPanchangaDashboard />
-                            )}
+
                         </TabsContent>
 
 
@@ -613,14 +583,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                 showLibrary && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-500/40 backdrop-blur-sm p-4">
                         <div className="w-full max-w-2xl bg-white border border-skyblue-200/50 rounded-xl shadow-[0_10px_40px_rgba(91,163,208,0.15)] relative overflow-hidden">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowLibrary(false)}
-                                className="absolute top-4 right-4 text-neutral-300 hover:text-neutral-500"
-                            >
-                                ✕
-                            </Button>
+
                             <ChartLibrary
                                 onLoad={(details) => {
                                     setShowLibrary(false);

@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import type { Panchanga, Dasha, SpecialTime } from '../api/client';
+import type { Panchanga, Dasha, SpecialTime, Hora } from '../api/client';
 import { calculateDashaDates } from '../utils/astroUtils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Sparkles, Sun } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, Sparkles, Sun, Clock } from "lucide-react";
 
 interface Props {
     data: Panchanga;
     dashas: Dasha[];
     birthDate: string;
     specialTimes?: SpecialTime[];
+    horaTimeline?: Hora[];
     ayanamsa?: number;
 }
 
@@ -37,7 +39,7 @@ const getVaraMeaning = (_name: string) => {
     return 'General energy of the day';
 };
 
-export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate, specialTimes = [], ayanamsa }) => {
+export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate, specialTimes = [], horaTimeline = [], ayanamsa }) => {
     const [today] = useState(new Date());
 
     const dashaInfo = useMemo(() => {
@@ -227,40 +229,42 @@ export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate, speci
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Auspicious Column */}
-                        <div className="space-y-4">
-                            <h4 className="text-green-400 font-bold flex items-center gap-2">
-                                <Sparkles className="w-4 h-4" /> Auspicious Times
-                            </h4>
-                            <div className="space-y-3">
+                        <div className="border border-green-500/30 rounded-lg bg-green-50/90 overflow-hidden">
+                            <div className="bg-green-100/50 px-4 py-2 border-b border-green-500/30 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-green-700" />
+                                <h4 className="font-bold text-green-800">Auspicious Times</h4>
+                            </div>
+                            <div className="p-4 space-y-3">
                                 {specialTimes.filter(t => t.quality === 'Auspicious').map((st, idx) => (
-                                    <div key={idx} className="p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-2">
-                                        <div className="text-green-300 font-bold">{st.name}</div>
-                                        <div className="text-lg font-medium text-white">{st.start_time} - {st.end_time}</div>
-                                        <div className="text-xs text-green-200/60">{st.description}</div>
+                                    <div key={idx} className="p-3 rounded-lg border border-green-600/20 bg-green-100/50 space-y-1">
+                                        <div className="text-green-900 font-bold flex justify-between">
+                                            <span>{st.name}</span>
+                                            <span className="text-sm font-mono text-green-800">{st.start_time} - {st.end_time}</span>
+                                        </div>
+                                        <div className="text-xs text-green-800/80">{st.description}</div>
                                     </div>
                                 ))}
                                 {specialTimes.filter(t => t.quality === 'Auspicious').length === 0 && (
-                                    <p className="text-sm text-muted-foreground italic">No specific auspicious timings highlighted for this window.</p>
+                                    <p className="text-sm text-green-800/60 italic">No specific auspicious timings highlighted for this window.</p>
                                 )}
                             </div>
                         </div>
 
                         {/* Inauspicious Column */}
-                        <div className="space-y-4">
-                            <h4 className="text-red-400 font-bold flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4" /> Inauspicious Times
-                            </h4>
-                            <div className="space-y-3">
+                        <div className="border border-red-500/30 rounded-lg bg-red-50/90 overflow-hidden">
+                            <div className="bg-red-100/50 px-4 py-2 border-b border-red-500/30 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-red-700" />
+                                <h4 className="font-bold text-red-800">Inauspicious Times</h4>
+                            </div>
+                            <div className="p-4 space-y-3">
                                 {specialTimes.filter((t: SpecialTime) => ['Inauspicious', 'Neutral/Mixed'].includes(t.quality)).map((st: SpecialTime, idx: number) => {
-                                    const colorClass = st.name === 'Rahu Kalam' ? 'border-red-500/30 bg-red-500/5 text-red-300' :
-                                        st.name === 'Yama Ganda' ? 'border-orange-500/30 bg-orange-500/5 text-orange-300' :
-                                            'border-yellow-500/30 bg-yellow-500/5 text-yellow-300';
-
                                     return (
-                                        <div key={idx} className={`p-4 rounded-xl border ${colorClass} space-y-2`}>
-                                            <div className="font-bold">{st.name}</div>
-                                            <div className="text-lg font-medium text-white">{st.start_time} - {st.end_time}</div>
-                                            <div className="text-xs opacity-70">{st.description}</div>
+                                        <div key={idx} className="p-3 rounded-lg border border-red-600/20 bg-red-100/50 space-y-1">
+                                            <div className="text-red-900 font-bold flex justify-between">
+                                                <span>{st.name}</span>
+                                                <span className="text-sm font-mono text-red-800">{st.start_time} - {st.end_time}</span>
+                                            </div>
+                                            <div className="text-xs text-red-800/80">{st.description}</div>
                                         </div>
                                     );
                                 })}
@@ -269,11 +273,60 @@ export const PanchangaPanel: React.FC<Props> = ({ data, dashas, birthDate, speci
                     </div>
                 </CardContent>
 
+                {/* Hora Timeline Section */}
+                {horaTimeline && horaTimeline.length > 0 && (
+                    <div className="border-t border-white/5 bg-black/20 p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock className="w-5 h-5 text-skyblue-400" />
+                            <h4 className="text-lg font-bold text-white">Hora Timeline</h4>
+                        </div>
+
+                        <div className="border border-white/10 rounded-xl overflow-hidden bg-black/20">
+                            <table className="w-full text-sm">
+                                <thead className="bg-white/5 text-muted-foreground border-b border-white/10">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-medium">Time Range</th>
+                                        <th className="px-4 py-3 text-left font-medium">Ruler</th>
+                                        <th className="px-4 py-3 text-left font-medium">Quality</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {horaTimeline.map((hora, idx) => (
+                                        <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                            <td className="px-4 py-3 font-mono text-neutral-300">
+                                                {hora.start_time} - {hora.end_time}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[10px] font-bold text-white">
+                                                        {hora.ruler.substring(0, 2)}
+                                                    </div>
+                                                    <span className="text-neutral-300 font-medium">{hora.ruler} Hora</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Badge variant="outline" className={`
+                                                    font-normal border-0
+                                                    ${hora.quality === 'Good' ? 'bg-green-500/20 text-green-300' :
+                                                        hora.quality === 'Average' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                            'bg-red-500/20 text-red-300'}
+                                                `}>
+                                                    {hora.quality}
+                                                </Badge>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {/* Ayanamsha Display */}
                 {ayanamsa !== undefined && (
-                    <div className="p-6 bg-muted/30 border-t border-white/5">
-                        <div className="text-sm font-medium text-muted-foreground mb-2">Ayanamsha (Lahiri)</div>
-                        <div className="text-4xl font-mono text-white tracking-tight">
+                    <div className="p-6 bg-white/90 border-t border-border/10">
+                        <div className="text-sm font-medium text-neutral-600 mb-2">Ayanamsha (Lahiri)</div>
+                        <div className="text-4xl font-mono text-black tracking-tight">
                             {ayanamsa.toFixed(6)}°
                         </div>
                     </div>

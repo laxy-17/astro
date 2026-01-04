@@ -206,26 +206,26 @@ class AIService:
              return "AI Coordinator connection failed. Unable to retrieve cosmic data."
 
         prompt = f"""
-        You are a Vedic Astrology expert. Generate a Daily Horoscope for **{sign_name}** for the date **{date}**.
+        You are a Vedic Astrology expert. Generate a Daily Horoscope for **{sign_name}** for the date **{date}** (use this MM/DD/YYYY format in your intro).
         
         Strictly follow this output format with these exact Emojis and Headers:
 
-        🌟 **Daily Overview**
+        🌟 Daily Overview
         [2-3 sentences on the general vibe of the day]
 
-        💰 **Wealth & Career**
+        💰 Wealth & Career
         [Specific advice on money, business, or work]
 
-        🤝 **Relationships**
+        🤝 Relationships
         [Insight on love, family, or social interactions]
 
-        ⚠️ **Health Alert**
+        ⚠️ Health Alert
         [A brief note on health or energy levels, and a precaution]
 
-        🎨 **Quick Reference**
-        - **Lucky Color**: [Color Name & Hex Code]
-        - **Lucky Number**: [1-2 numbers]
-        - **Power Word**: [One word theme]
+        🎨 Quick Reference
+        - Lucky Color: [Color Name & Hex Code]
+        - Lucky Number: [1-2 numbers]
+        - Power Word: [One word theme]
 
         Tone: Uplifting, predictive yet grounded, and mysterious.
         Keep it concise but impactful.

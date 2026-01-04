@@ -1,13 +1,13 @@
 # Project 8Stro - Vedic Astrology App (MVP)
 
-**Version**: 1.0.0
-**Date**: January 3, 2026
-**Status**: Feature Complete (Beta 1.6) - *Sky Blue & Violet Theme Migration Complete*
+**Version**: 1.0.1 (Baseline v1)
+**Date**: January 4, 2026
+**Status**: Release Candidate (v1) - *Security Hardened & AI Mentor Refined*
 
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
 
-Recent major updates include a serene "Sky Blue & Violet" UI migration, resolution of 500 Internal Server Errors in Daily Mentor/Timings, an interactive Dasha timeline, integration of **OpenStreetMap Nominatim** for location search, and rigorous accuracy verification against Gold Standard charts.
+Recent major updates (Baseline v1) include a comprehensive **Security Hardening** (input validation, rate limiting preparation, Git secret protection), a refined **AI Vedic Mentor** layout (Violet/Orange themes, bulleted forecasts, MM/DD/YYYY formatting), and optimized **Hora Quality** logic based on Day Lord relationships.
 
 ## 2. Technology Stack
 
@@ -75,10 +75,15 @@ Recent major updates include a serene "Sky Blue & Violet" UI migration, resoluti
 - **Export**: One-click PDF download of the entire dashboard.
 - **Responsiveness**: Fully mobile-responsive grid layout.
 - **Resilience**: Graceful error handling for missing API keys or offline states.
+- **Security Hardening (v1)**: 
+    - Robust Pydantic validation for birth coordinates and ayanamsa modes.
+    - Removal of duplicate API endpoints.
+    - Automated secret protection via `.gitignore` and `.dockerignore`.
 - **UI Polish**:
     - High-contrast text for accessibility (AI Mentor).
     - **Unified Theme**: Consistent "Sky Blue & Violet" palette across Dashas, Transits, and Panchanga.
-    - **Mentor Dashboard**: Consolidated Life Area Guidance and Hora Timings into a unified "AI Vedic Mentor" panel.
+    - **Mentor Dashboard**: Refined "AI Vedic Mentor" panel with moved Daily Forecast, bulleted lists, and color-coded profile sections (Violet/Orange).
+    - **Hora Table**: Improved visibility with clear status badges and "Neutral" quality terminology.
     - Astrological degree display (0-30°) for easier reading.
     - Single-line longitude formatting.
     - Maandi abbreviated as 'Mn'.

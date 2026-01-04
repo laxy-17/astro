@@ -1,13 +1,21 @@
+import datetime
 from pydantic import BaseModel, Field
-from datetime import date, time, datetime
 from typing import List, Optional, Any
+from enum import Enum
+
+class AyanamsaMode(str, Enum):
+    LAHIRI = "LAHIRI"
+    RAMAN = "RAMAN"
+    KRISHNAMURTI = "KRISHNAMURTI"
+    FAGAN_BRADLEY = "FAGAN_BRADLEY"
+    SAYANA = "SAYANA"
 
 class BirthDetails(BaseModel):
-    date: date
-    time: time
-    latitude: float
-    longitude: float
-    ayanamsa_mode: str = "LAHIRI"
+    date: datetime.date = Field(..., description="Birth date (YYYY-MM-DD)")
+    time: datetime.time = Field(..., description="Birth time (HH:MM:SS)")
+    latitude: float = Field(..., ge=-90, le=90, description="Birth latitude (-90 to 90)")
+    longitude: float = Field(..., ge=-180, le=180, description="Birth longitude (-180 to 180)")
+    ayanamsa_mode: AyanamsaMode = Field(default=AyanamsaMode.LAHIRI)
     # New Location Fields
     location_city: Optional[str] = None
     location_state: Optional[str] = None
@@ -85,8 +93,8 @@ class House(BaseModel):
 class DashaPeriod(BaseModel):
     lord: str
     duration: float = Field(..., description="Duration in years (or balance)")
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[datetime.date] = None
+    end_date: Optional[datetime.date] = None
 
 class ChartResponse(BaseModel):
     ascendant: float
@@ -119,7 +127,7 @@ class UserLogin(UserBase):
 
 class User(UserBase):
     id: int
-    created_at: datetime
+    created_at: datetime.datetime
 
     class Config:
         from_attributes = True
@@ -151,7 +159,7 @@ class DailyTimeline(BaseModel):
 class DailyPanchangaRequest(BaseModel):
     latitude: float
     longitude: float
-    date: Optional[date] = None  # If None, uses current local date
+    date: Optional[datetime.date] = None  # If None, uses current local date
     city: Optional[str] = None
     ayanamsa_mode: str = "LAHIRI"
 

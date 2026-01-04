@@ -1,34 +1,36 @@
-# System
-.DS_Store
-Thumbs.db
-
-# Environments
-venv/
-env/
+# Security
 .env
-backend/cache/
+.env.*
+*.env
+.env.local
+.env.production
+.env.development
+.env.test
 
-# Python
+# Database
+*.db
+backend/app/charts.db
+
+# Cache
 __pycache__/
 *.py[cod]
-*.so
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+backend/cache/
 
 # Node
 node_modules/
-dist/
-build/
-.output/
+frontend/dist/
+npm-debug.log
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Database (Local)
-charts.db
-*.sqlite3
-
-# Editor
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

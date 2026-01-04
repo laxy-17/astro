@@ -521,12 +521,23 @@ def calculate_horas(date_obj: date, lat: float, lon: float, tz_str: str) -> 'Dai
     PLANET_ORDER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn']
     day_lord_name = PLANET_ORDER[vedic_day_idx]
     
+    # Define Quality Helper
+    def get_quality(ruler_name, day_lord_name):
+        if ruler_name == day_lord_name:
+            return "Good", "#22c55e" # Own Hora is good
+        
+        # Standard: Check the relationship from the Day Lord's perspective
+        # "Horas of the planets which are friends of the Day Lord are good."
+        day_lord_info = PLANET_INFO.get(day_lord_name, {})
+        
+        if ruler_name in day_lord_info.get('friends', []):
+            return "Good", "#22c55e"
+        if ruler_name in day_lord_info.get('enemies', []):
+            return "Bad", "#ef4444"
+        return "Neutral", "#eab308" # Amber color for Neutral/Mixed
+
     # Hora Ruler Sequence (Reverse Speed): Sun, Ven, Mer, Moo, Sat, Jup, Mar
     # Or simply: Next Hora Ruler is the 6th from current in week order.
-    # Current (0) -> +5 mod 7? No.
-    # Sun(0) -> Ven(5). (+5)
-    # Ven(5) -> Mer(3). (5+5=10%7=3). Yes.
-    # Mer(3) -> Moo(1). (3+5=8%7=1). Yes.
     HORA_ORDER = []
     curr = vedic_day_idx
     for _ in range(24):
@@ -545,14 +556,15 @@ def calculate_horas(date_obj: date, lat: float, lon: float, tz_str: str) -> 'Dai
         end_t = current_time + part_len
         
         ruler = HORA_ORDER[i]
+        quality, color = get_quality(ruler, day_lord_name)
         
         horas.append(Hora(
             index=i+1,
             start_time=jd_to_local_str(start_t).split(" ")[0] + " " + jd_to_local_str(start_t).split(" ")[1], # HH:MM AM
             end_time=jd_to_local_str(end_t).split(" ")[0] + " " + jd_to_local_str(end_t).split(" ")[1],
             ruler=ruler,
-            quality="Neutral", # TODO: Implement quality logic
-            color="#FFD700" if ruler == 'Sun' else "#C0C0C0" # Placeholder
+            quality=quality,
+            color=color
         ))
         current_time = end_t
         
@@ -560,22 +572,21 @@ def calculate_horas(date_obj: date, lat: float, lon: float, tz_str: str) -> 'Dai
     night_duration = next_rise - sett
     part_len_night = night_duration / 12.0
     
-    # Identify offset for night rulers
-    # Actually HORA_ORDER has all 24.
-    
     current_time = sett
     for i in range(12, 24):
         start_t = current_time
         end_t = current_time + part_len_night
         
         ruler = HORA_ORDER[i]
+        quality, color = get_quality(ruler, day_lord_name)
         
         horas.append(Hora(
             index=i+1,
             start_time=jd_to_local_str(start_t).split(" ")[0] + " " + jd_to_local_str(start_t).split(" ")[1],
             end_time=jd_to_local_str(end_t).split(" ")[0] + " " + jd_to_local_str(end_t).split(" ")[1],
             ruler=ruler,
-            quality="Neutral"
+            quality=quality,
+            color=color
         ))
         current_time = end_t
         

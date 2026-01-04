@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import type { DailyMentorResponse, BirthDetails, Hora, SpecialTime } from '../api/client';
+import type { DailyMentorResponse, BirthDetails } from '../api/client';
 import { getDailyMentor } from '../api/client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertTriangle, Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 interface Props {
     birthDetails: BirthDetails;
@@ -37,10 +37,9 @@ export const DailyMentor: React.FC<Props> = ({ birthDetails }) => {
     if (error || !data) return <ErrorState message={error || "Unknown error"} />;
 
     return (
-        <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-6 pb-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <Header date={data.date} />
             <DailyFocusCard data={data} />
-            <MomentsTimeline horaTimeline={data.hora_timeline} specialTimes={data.special_times} />
         </div>
     );
 };
@@ -83,70 +82,7 @@ const DailyFocusCard: React.FC<{ data: DailyMentorResponse }> = ({ data }) => {
     );
 };
 
-const MomentsTimeline: React.FC<{ horaTimeline: Hora[], specialTimes: SpecialTime[] }> = ({ horaTimeline, specialTimes }) => {
-    const relevantSpecial = specialTimes.filter(t => t.description.includes("Golden") || t.quality === "Inauspicious");
 
-    return (
-        <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-neutral-500 px-1">Moments Timeline</h3>
-            <div className="space-y-4">
-                {/* Special Highlights */}
-                {relevantSpecial.map((st, idx) => (
-                    <div key={idx} className={`p-4 rounded-lg border ${st.quality === 'Auspicious' ? 'bg-status-warning/5 border-status-warning/30' : 'bg-status-error/5 border-status-error/20'} flex items-center gap-4`}>
-                        <div className={`p-2 rounded-full ${st.quality === 'Auspicious' ? 'bg-status-warning/20 text-status-warning' : 'bg-status-error/20 text-status-error'}`}>
-                            {st.quality === 'Auspicious' ? <Sparkles className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-                        </div>
-                        <div>
-                            <div className={`font-bold text-sm ${st.quality === 'Auspicious' ? 'text-status-warning' : 'text-status-error'}`}>{st.name}</div>
-                            <div className="text-xs text-neutral-400">{st.start_time} - {st.end_time}</div>
-                            <div className="text-xs text-neutral-500 mt-1">{st.description}</div>
-                        </div>
-                    </div>
-                ))}
-
-                {/* Hora Table */}
-                <div className="border border-skyblue-200/50 rounded-xl overflow-hidden bg-white/60">
-                    <table className="w-full text-sm">
-                        <thead className="bg-skyblue-50/50 text-neutral-500 border-b border-skyblue-200/30">
-                            <tr>
-                                <th className="px-4 py-3 text-left font-medium">Time Range</th>
-                                <th className="px-4 py-3 text-left font-medium">Ruler</th>
-                                <th className="px-4 py-3 text-left font-medium">Quality</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-skyblue-100">
-                            {horaTimeline.map((hora, idx) => (
-                                <tr key={idx} className="hover:bg-skyblue-50/30 transition-colors">
-                                    <td className="px-4 py-3 font-mono text-neutral-400">
-                                        {hora.start_time} - {hora.end_time}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-skyblue-50 border border-skyblue-100 flex items-center justify-center text-[10px] font-bold text-skyblue-600">
-                                                {hora.ruler.substring(0, 2)}
-                                            </div>
-                                            <span className="text-neutral-600 font-medium">{hora.ruler} Hora</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Badge variant="outline" className={`
-                                            font-normal border-0
-                                            ${hora.quality === 'Good' ? 'bg-status-success/10 text-status-success' :
-                                                hora.quality === 'Average' ? 'bg-status-warning/10 text-status-warning' :
-                                                    'bg-status-error/10 text-status-error'}
-                                        `}>
-                                            {hora.quality}
-                                        </Badge>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 
 const EmptyState = () => (

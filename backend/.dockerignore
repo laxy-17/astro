@@ -1,0 +1,33 @@
+# Exclude secrets
+.env
+.env.*
+*.env
+.env.local
+.env.production
+
+# Database
+*.db
+charts.db
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
