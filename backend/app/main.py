@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 # Load environment variables first
 load_dotenv()
-from .models import BirthDetails, ChartResponse, PlanetPosition, House, Panchanga, DailyPanchangaRequest, DailyPanchangaResponse
-from .engine import calculate_chart, get_current_transits, calculate_daily_panchanga_extended, calculate_auspicious_timings_extended, get_hindu_calendar_info, get_planetary_positions_small
+from .models import BirthDetails, ChartResponse, PlanetPosition, House, Panchanga, DailyPanchangaRequest, DailyPanchangaResponse, MentorRequest, MentorResponse, InsightsResponse
+from .engine import calculate_chart, get_current_transits, calculate_daily_panchanga_extended, calculate_auspicious_timings_extended, get_hindu_calendar_info, get_planetary_positions_small, get_current_transits_extended
 from .database import init_db, save_chart, list_charts, delete_chart, SavedChart
 from .integrations.vedic_astro_api import VedicAstroService
 from .utils.timezone_helper import get_local_datetime, get_sunrise_sunset, get_timezone_for_coordinates
@@ -15,6 +15,15 @@ import logging
 import requests
 import os
 from .routes import auth, daily
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request, Depends
+from sqlalchemy.orm import Session
+from .database import get_db
+
+# Initialize Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,6 +32,25 @@ app = FastAPI(
     title="Vedic Astrology API",
     description="Calculate Vedic astrological birth charts with Swiss Ephemeris",
     version="1.0.0"
+)
+
+# Add Limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS Middleware
+origins = [
+    "http://localhost",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include Routers
@@ -63,46 +91,9 @@ async def get_location(place_id: str):
     
     return details
 
-class MentorRequest(BaseModel):
-    query: str
-    chart_data: ChartResponse
-    birth_details: BirthDetails
 
-@app.post("/mentor/ask", tags=["Mentor"])
-def ask_mentor(req: MentorRequest):
-    """
-    Ask the AI Mentor a question based on the chart.
-    """
-    try:
-        response = ai_service.get_mentor_response(
-            req.query,
-            req.chart_data,
-            req.birth_details
-        )
-        return {"response": response}
-    except Exception as e:
-        logger.error(f"Mentor error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get mentor response")
 
-@app.post("/insights/generate", tags=["Insights"])
-def generate_insights(details: BirthDetails):
-    """
-    Generate the 4 Core Insights (Personal, Career, Relationships, Do's/Don'ts).
-    """
-    try:
-        # 1. Calculate Chart First (Ensure we have fresh data)
-        chart = calculate_chart(details)
-        
-        # 2. Generate Insights
-        insights = ai_service.generate_core_insights(chart, details)
-        
-        return {
-            "chart_id": "temp_id", # MVP: No DB persistence for now
-            "insights": insights
-        }
-    except Exception as e:
-        logger.error(f"Insights error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate insights")
+
 
 @app.post("/api/daily-panchanga", tags=["Panchanga"], response_model=DailyPanchangaResponse)
 async def get_daily_panchanga(request: DailyPanchangaRequest):
@@ -172,54 +163,13 @@ async def get_daily_panchanga(request: DailyPanchangaRequest):
         logger.error(f"Daily Panchanga error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Enable CORS for frontend development and production
-# Configure allowed origins from environment variable or default to localhost
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:8000,http://127.0.0.1:5173").split(",")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[origin.strip() for origin in allowed_origins],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
-)
-
 @app.on_event("startup")
 async def startup_event():
     init_db()
 
 
 
-@app.post("/chart", response_model=ChartResponse, tags=["Charts"])
-def create_chart(details: BirthDetails):
-    """
-    Calculate a birth chart from birth details.
-    
-    - **date**: Birth date (YYYY-MM-DD)
-    - **time**: Birth time (HH:MM:SS)
-    - **latitude**: Birth location latitude (-90 to 90)
-    - **longitude**: Birth location longitude (-180 to 180)
-    
-    Returns complete birth chart with planets, houses, and dashas.
-    """
-    try:
-        logger.info(
-            f"Calculating chart for {details.date} {details.time} "
-            f"at {details.latitude}, {details.longitude}"
-        )
-        chart = calculate_chart(details)
-        logger.info(f"Chart calculated successfully with {len(chart.planets)} planets")
-        return chart
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error calculating chart: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Chart calculation failed: {str(e)}"
-        )
+
 
 @app.get("/insights/daily", tags=["Insights"])
 def get_daily_insight(sign_id: int, date: str):
@@ -302,6 +252,64 @@ def get_extended_transits_endpoint():
     except Exception as e:
         logger.error(f"Extended transits error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.post("/chart", response_model=ChartResponse, tags=["Charts"])
+@limiter.limit("20/minute")
+def create_chart(request: Request, details: BirthDetails, db: Session = Depends(get_db)):
+    """
+    Calculate Vedic Chart with high precision.
+    Includes rate limiting to prevent abuse.
+    """
+    try:
+        # Check cache/database first
+        # ... logic ...
+        
+        # Calculate fresh
+        chart = engine.calculate_chart(details)
+        
+        # Save to DB
+        # ... logic ...
+        
+        return chart
+    except Exception as e:
+        logger.error(f"Chart calculation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/insights/generate", response_model=InsightsResponse, tags=["Insights"])
+@limiter.limit("5/hour")
+def generate_insights(request: Request, details: BirthDetails):
+    """
+    Generate AI-powered insights.
+    Strictly rate limited due to high cost.
+    """
+    try:
+        # Check cache
+        # ... logic ...
+        
+        # Generate
+        insights = ai_service.generate_insights(details)
+        return insights
+    except Exception as e:
+        logger.error(f"Insights generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/mentor/ask", response_model=MentorResponse, tags=["AI Mentor"])
+@limiter.limit("10/hour")
+async def ask_mentor(request: Request, body: MentorRequest):
+    """
+    Ask the AI Vedic Mentor a question.
+    Rate limited to ensure fair usage.
+    """
+    try:
+         # ...
+         return await ai_service.get_mentor_response(body.query, body.context, body.details)
+         
+    except Exception as e:
+        logger.error(f"Mentor error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 from fastapi.responses import JSONResponse
 

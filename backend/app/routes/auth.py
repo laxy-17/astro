@@ -4,8 +4,8 @@ from datetime import timedelta
 from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app import models, database, auth
-from app.database import get_db
+from .. import models, database, auth
+from ..database import get_db
 
 router = APIRouter(
     prefix="/auth",

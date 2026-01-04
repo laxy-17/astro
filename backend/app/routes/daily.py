@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from sqlalchemy.orm import Session
+from .. import models, database, engine, advisor
+from ..database import get_db
+from ..models import BirthDetails
 from typing import Optional
 from datetime import date, datetime
 import pytz
 
-from app import engine, models, advisor
 
 router = APIRouter(
     prefix="/daily",

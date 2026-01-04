@@ -252,3 +252,16 @@ class LocationDetails(BaseModel):
     state: str
     country: str
     timezone: str
+
+class MentorRequest(BaseModel):
+    query: str
+    context: Optional[str] = None
+    details: BirthDetails
+
+class MentorResponse(BaseModel):
+    response: str
+
+class InsightsResponse(BaseModel):
+    header: str
+    content: str
+    chart_id: Optional[str] = None

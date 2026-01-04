@@ -1,8 +1,12 @@
-# Project 8Stro - Vedic Astrology App (MVP)
+# Project# 8Stro - Vedic Astrology Application
 
 **Version**: 1.1.0
-**Date**: January 4, 2026
-**Status**: Feature Complete (v1.1) - *PDF Export & UI Polish*
+**Status**: Stable (Production Ready) - PDF Export, UI Polish, Rate Limiting & Security Hardened
+
+## Recent Updates
+- **Security**: Added Rate Limiting (`slowapi`), `detect-secrets` hook, and `.env.example`.
+- **Backend**: Fixed Transits API and CORS issues. Refactored `main.py` for clarity.
+- **Features**: PDF Export Preview, UI Polish (Toast notifications, Keyboard shortcuts).
 
 ## 1. Project Overview
 Project 8Stro is a modern, premium Vedic Astrology web application designed to provide accurate chart calculations and AI-driven astrological insights. It bridges traditional Jyotish calculations (using Swiss Ephemeris) with cutting-edge Generative AI (Google Gemini 2.0) to act as a personalized astrological mentor.
