@@ -1,3 +1,0 @@
-SUPABASE_PROJECT_URL=https://uhaxgvkosmzpplkfryrs.supabase.co
-SUPABASE_DB_HOST=db.uhaxgvkosmzpplkfryrs.supabase.co
-# SUPABASE_DB_PASSWORD=[REQUIRED]
