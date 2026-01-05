@@ -1,0 +1,96 @@
+/* ============================================
+   SKY BLUE PARCHMENT TEXTURE
+   (Based on Integrated Design Plan)
+   ============================================ */
+
+.parchment-skyblue {
+    position: relative;
+    background: linear-gradient(135deg,
+            #E0F2FE 0%,
+            /* Light sky blue */
+            #BAE6FD 50%,
+            /* Medium sky blue */
+            #E0F2FE 100%);
+    background-size: 200% 200%;
+
+    /* Paper texture overlay */
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(125, 211, 252, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(125, 211, 252, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(125, 211, 252, 0.1) 0%, transparent 50%);
+
+    /* Subtle texture pulse */
+    filter: contrast(1.03) brightness(1.01);
+}
+
+/* Aging spots (sky blue tinted) */
+.parchment-skyblue::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 3%),
+        radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.06) 0%, transparent 4%),
+        radial-gradient(circle at 70% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 5%),
+        radial-gradient(circle at 30% 90%, rgba(56, 189, 248, 0.04) 0%, transparent 3%);
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Decorative border - Violet with sky blue pattern */
+.parchment-border {
+    border: 4px solid #6366F1;
+    /* Violet main border */
+    border-image: repeating-linear-gradient(45deg,
+            #6366F1,
+            /* Violet */
+            #6366F1 10px,
+            #38BDF8 10px,
+            /* Sky blue */
+            #38BDF8 20px) 4;
+    box-shadow:
+        inset 0 0 20px rgba(99, 102, 241, 0.08),
+        0 4px 12px rgba(14, 165, 233, 0.12);
+    border-radius: 8px;
+}
+
+/* Corner decorative elements */
+.corner-bracket {
+    position: absolute;
+    width: 2rem;
+    height: 2rem;
+    border-color: #6366F1;
+    opacity: 0.4;
+    z-index: 5;
+}
+
+.corner-bracket.top-left {
+    top: 0.5rem;
+    left: 0.5rem;
+    border-left: 2px solid;
+    border-top: 2px solid;
+}
+
+.corner-bracket.top-right {
+    top: 0.5rem;
+    right: 0.5rem;
+    border-right: 2px solid;
+    border-top: 2px solid;
+}
+
+.corner-bracket.bottom-left {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    border-left: 2px solid;
+    border-bottom: 2px solid;
+}
+
+.corner-bracket.bottom-right {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    border-right: 2px solid;
+    border-bottom: 2px solid;
+}

@@ -161,6 +161,7 @@ class DailyPanchangaRequest(BaseModel):
     longitude: float
     date: Optional[datetime.date] = None  # If None, uses current local date
     city: Optional[str] = None
+    timezone_str: Optional[str] = "UTC"
     ayanamsa_mode: str = "LAHIRI"
 
 class LocationInfo(BaseModel):
@@ -211,6 +212,8 @@ class PanchangaExtended(BaseModel):
     yoga: YogaDataExtended
     karana: KaranaDataExtended
     vara: VaraData
+    sun_rasi: str
+    moon_rasi: str
 
 class HinduCalendar(BaseModel):
     month: str
@@ -261,7 +264,12 @@ class MentorRequest(BaseModel):
 class MentorResponse(BaseModel):
     response: str
 
+class CoreInsightsData(BaseModel):
+    personal: str
+    career: str
+    relationships: str
+    dos_donts: str
+
 class InsightsResponse(BaseModel):
-    header: str
-    content: str
-    chart_id: Optional[str] = None
+    insights: CoreInsightsData
+

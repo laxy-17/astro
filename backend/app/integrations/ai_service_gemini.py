@@ -206,7 +206,7 @@ class AIService:
              return "AI Coordinator connection failed. Unable to retrieve cosmic data."
 
         prompt = f"""
-        You are a Vedic Astrology expert. Generate a Daily Horoscope for **{sign_name}** for the date **{date}** (use this MM/DD/YYYY format in your intro).
+        You are a Vedic Astrology expert. Generate a Daily Horoscope for **{sign_name}** for the date **{date}** (use a friendly format like 'January 4th, 2026' in your intro).
         
         Strictly follow this output format with these exact Emojis and Headers:
 
@@ -240,4 +240,48 @@ class AIService:
         except Exception as e:
             logger.error(f"Daily Horoscope Generation failed: {e}")
             return "Unable to consult the stars at this moment."
+
+    def generate_daily_vibe(self, panchang_summary: dict, energy_score: float) -> dict:
+        """
+        Generate a daily vibe and theme using AI based on Panchanga.
+        Returns dict with keys: 'vibe', 'theme'.
+        """
+        if not self.client:
+            return {
+                "vibe": "Mysterious & subtle",
+                "theme": "The stars are silent today."
+            }
+
+        prompt = f"""
+        You are a Vedic Astrology expert. Create a short "Daily Vibe" (2-3 words) and a "Daily Theme" (1 sentence) based on today's energy.
+
+        CONTEXT:
+        Nakshatra: {panchang_summary.get('nakshatra')}
+        Tithi: {panchang_summary.get('tithi')}
+        Yoga: {panchang_summary.get('yoga')}
+        Energy Score: {energy_score}/100
+
+        OUTPUT FORMAT (JSON):
+        {{
+            "vibe": "Two Three Words",
+            "theme": "One inspiring sentence about the day's energy."
+        }}
+        """
+
+        try:
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash-exp",
+                contents=prompt,
+                config={
+                    'response_mime_type': 'application/json'
+                }
+            )
+            import json
+            return json.loads(response.text)
+        except Exception as e:
+            logger.error(f"Daily Vibe AI failed: {e}")
+            return {
+                "vibe": "Mysterious & subtle",
+                "theme": f"Embrace the energy of {panchang_summary.get('nakshatra')} today."
+            }
 

@@ -8,55 +8,77 @@ interface Props {
 }
 
 export const BirthParticulars: React.FC<Props> = ({ details }) => {
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateFormat = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            return `${dayName}, ${dateFormat}`;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     return (
-        <Card className="glass-panel border-border bg-card/40">
-            <CardHeader className="pb-2 text-primary border-b border-border">
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="text-xl">📜</span> Birth Particulars
+        <Card className="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="pb-4 bg-gray-50/50 border-b border-gray-100">
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="text-xl">📋</span> Birth Information
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div className="p-2 bg-violet-500/10 rounded-md">
-                            <Calendar className="w-5 h-5 text-violet-400" />
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Date</div>
-                            <div className="text-foreground font-medium">{details.date}</div>
-                        </div>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8">
+                    {/* Date */}
+                    <div className="space-y-1">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            Date of Birth
+                        </label>
+                        <p className="text-[17px] font-medium text-gray-900">
+                            {formatDate(details.date)}
+                        </p>
                     </div>
 
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div className="p-2 bg-blue-500/10 rounded-md">
-                            <Clock className="w-5 h-5 text-blue-400" />
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Time</div>
-                            <div className="text-foreground font-medium">{details.time}</div>
-                        </div>
+                    {/* Time */}
+                    <div className="space-y-1">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            Time of Birth
+                        </label>
+                        <p className="text-[17px] font-medium text-gray-900">
+                            {details.time}
+                            {details.location_timezone && (
+                                <span className="text-sm text-gray-400 ml-2 font-normal">
+                                    ({details.location_timezone})
+                                </span>
+                            )}
+                        </p>
                     </div>
 
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div className="p-2 bg-emerald-500/10 rounded-md">
-                            <MapPin className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Location</div>
-                            <div className="text-foreground font-medium truncate max-w-[120px]" title={`${details.latitude.toFixed(4)}, ${details.longitude.toFixed(4)}`}>
-                                {details.latitude.toFixed(2)}°, {details.longitude.toFixed(2)}°
-                            </div>
-                        </div>
+                    {/* Location */}
+                    <div className="space-y-1">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            Place of Birth
+                        </label>
+                        <p className="text-[17px] font-medium text-gray-900">
+                            {details.location_city || 'Unknown Location'}
+                        </p>
+                        <p className="text-xs text-gray-400 font-medium">
+                            {details.latitude.toFixed(4)}°N, {details.longitude.toFixed(4)}°E
+                        </p>
                     </div>
 
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div className="p-2 bg-orange-500/10 rounded-md">
-                            <Compass className="w-5 h-5 text-orange-400" />
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Ayanamsa</div>
-                            <div className="text-foreground font-medium">{details.ayanamsa_mode || 'LAHIRI'}</div>
-                        </div>
+                    {/* Ayanamsa */}
+                    <div className="space-y-1">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            Ayanamsa (System)
+                        </label>
+                        <p className="text-[17px] font-medium text-gray-900">
+                            {details.ayanamsa_mode || 'LAHIRI'}
+                        </p>
                     </div>
                 </div>
             </CardContent>

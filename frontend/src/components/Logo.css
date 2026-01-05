@@ -25,24 +25,26 @@
 .logo-symbol-animated {
     color: #0ea5e9;
     /* sky-500 */
-    animation: symbolMorph 6s ease-in-out infinite;
+    animation: symbolRotate 8s linear infinite;
     display: inline-block;
     position: relative;
 }
 
-@keyframes symbolMorph {
-
-    0%,
-    100% {
-        transform: rotate(0deg) scale(1);
+@keyframes symbolRotate {
+    0% {
+        transform: rotate(0deg);
         filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.2));
     }
 
     50% {
-        transform: rotate(90deg) scale(1.1);
         filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
         color: #8b5cf6;
         /* violet-500 */
+    }
+
+    100% {
+        transform: rotate(360deg);
+        filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.2));
     }
 }
 

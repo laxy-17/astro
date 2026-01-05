@@ -17,7 +17,12 @@ export const DailyMentor: React.FC<Props> = ({ birthDetails }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const today = new Date().toISOString().split('T')[0];
+                // Use local date (YYYY-MM-DD) instead of UTC
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const today = `${year}-${month}-${day}`;
                 const result = await getDailyMentor(birthDetails, today);
                 setData(result);
             } catch (err: any) {
@@ -50,7 +55,14 @@ export const DailyMentor: React.FC<Props> = ({ birthDetails }) => {
 const Header: React.FC<{ date: string }> = ({ date }) => (
     <div className="px-1">
         <h1 className="text-2xl font-bold text-neutral-500">Your Day</h1>
-        <p className="text-neutral-400">{new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <div className="flex flex-col">
+            <p className="text-neutral-400 font-medium">
+                {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+            <p className="text-xs text-neutral-400/70 font-mono tracking-widest uppercase">
+                {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+            </p>
+        </div>
     </div>
 );
 

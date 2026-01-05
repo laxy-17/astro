@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8001'; // Hardcoded for local reliable dev
+const API_BASE = 'http://localhost:8000'; // Hardcoded for local reliable dev
 
 // Create axios instance with configuration
 const axiosInstance = axios.create({
@@ -364,10 +364,10 @@ export interface DailyMentorResponse {
   };
 }
 
-export const getDailyMentor = async (details: BirthDetails, date: string): Promise<DailyMentorResponse> => {
+export const getDailyMentor = async (details: BirthDetails, date: string, timezone?: string): Promise<DailyMentorResponse> => {
   // Use POST to send complex birth details body + Query for current date
   const response = await axiosInstance.post<DailyMentorResponse>('/daily/mentor', details, {
-    params: { current_date: date }
+    params: { current_date: date, timezone_str: timezone || 'UTC' }
   });
   return response.data;
 };
@@ -493,6 +493,7 @@ export interface DailyPanchangaRequest {
   longitude: number;
   date?: string;
   city?: string;
+  timezone_str?: string;
   ayanamsa_mode?: string;
 }
 

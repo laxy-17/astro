@@ -53,8 +53,23 @@ def get_daily_mentor(
         
         energy = advisor.calculate_daily_energy(chart, current_dt, panchang)
         
-        # 4. Generate Theme
-        theme = advisor.generate_daily_theme(energy['score'], panchang.nakshatra.name)
+        # 4. Generate AI Vibe & Theme
+        # Prepare context
+        panchang_summary = {
+            "tithi": panchang.tithi.name,
+            "nakshatra": panchang.nakshatra.name,
+            "vara": panchang.vara,
+            "yoga": panchang.yoga.name,
+            "karana": panchang.karana.name
+        }
+        
+        # Call AI Service
+        from ..main import ai_service # Import instance from main to reuse connection
+        ai_data = ai_service.generate_daily_vibe(panchang_summary, energy['score'])
+        
+        # Override advisor's static vibe/theme
+        energy['vibe'] = ai_data.get('vibe', energy['vibe'])
+        theme = ai_data.get('theme', "Embrace the cosmic energy today.")
         
         # 5. Get Hora Timeline
         timeline = engine.calculate_horas(

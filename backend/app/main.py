@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+# Reload trigger
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
@@ -14,7 +15,7 @@ from .utils.timezone_helper import get_local_datetime, get_sunrise_sunset, get_t
 import logging
 import requests
 import os
-from .routes import auth, daily
+from .routes import auth, daily, panchang_complete
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -56,6 +57,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(auth.router)
 app.include_router(daily.router)
+app.include_router(panchang_complete.router)
 
 # Initialize External Services
 vedic_service = VedicAstroService()
@@ -109,11 +111,22 @@ async def get_daily_panchanga(request: DailyPanchangaRequest):
             local_dt = get_local_datetime(request.latitude, request.longitude)
             target_date = local_dt.date()
         
-        # 2. Calculate sunrise/sunset
+        # 2. Calculate sunrise/sunset (Local Timezone Aware)
+        # We need to construct the date in the specific timezone to get accurate start of day
+        from datetime import datetime, time
+        import pytz
+        
+        tz_str = request.timezone_str or "UTC"
+        tz = pytz.timezone(tz_str)
+        
+        # Create timezone-aware datetime for the target date's noon (safe middle of day)
+        # `get_sunrise_sunset` in engine/utils expects a date or datetime
+        # Let's ensure we are passing the right thing.
+        
         sunrise, sunset = get_sunrise_sunset(
             request.latitude,
             request.longitude,
-            target_date
+            target_date # This helper now handles day boundary logic
         )
         
         # 3. Calculate Panchanga for sunrise time
@@ -195,7 +208,16 @@ def get_daily_insight(sign_id: int, date: str):
         try:
             from datetime import datetime
             dt_obj = datetime.strptime(date, "%Y-%m-%d")
-            formatted_date = dt_obj.strftime("%m/%d/%Y")
+            
+            def get_date_suffix(day):
+                if 11 <= day <= 13: return 'th'
+                return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+
+            day = dt_obj.day
+            month = dt_obj.strftime("%b")
+            year = dt_obj.year
+            # Format like "Jan 4th, 2026"
+            formatted_date = f"{month} {day}{get_date_suffix(day)}, {year}"
         except:
             formatted_date = date
 
@@ -267,7 +289,7 @@ def create_chart(request: Request, details: BirthDetails, db: Session = Depends(
         # ... logic ...
         
         # Calculate fresh
-        chart = engine.calculate_chart(details)
+        chart = calculate_chart(details)
         
         # Save to DB
         # ... logic ...
@@ -281,19 +303,35 @@ def create_chart(request: Request, details: BirthDetails, db: Session = Depends(
 @limiter.limit("5/hour")
 def generate_insights(request: Request, details: BirthDetails):
     """
-    Generate AI-powered insights.
+    Generate AI-powered core insights (Personal, Career, Relationships, Dos/Donts).
     Strictly rate limited due to high cost.
     """
     try:
-        # Check cache
-        # ... logic ...
+        # 1. Calculate the chart first (AI service needs planetary positions)
+        chart = calculate_chart(details)
         
-        # Generate
-        insights = ai_service.generate_insights(details)
-        return insights
+        # 2. Generate insights using the chart context
+        insights_dict = ai_service.generate_core_insights(chart, details)
+        
+        return {
+            "insights": {
+                "personal": insights_dict.get("personal", "Unavailable"),
+                "career": insights_dict.get("career", "Unavailable"),
+                "relationships": insights_dict.get("relationships", "Unavailable"),
+                "dos_donts": insights_dict.get("dos_donts", "Unavailable")
+            }
+        }
     except Exception as e:
         logger.error(f"Insights generation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return graceful error state instead of 500 so UI shows "Unavailable"
+        return {
+            "insights": {
+                "personal": "Unable to generate insights.",
+                "career": "Unable to generate insights.",
+                "relationships": "Unable to generate insights.",
+                "dos_donts": "Unable to generate insights."
+            }
+        }
 
 @app.post("/mentor/ask", response_model=MentorResponse, tags=["AI Mentor"])
 @limiter.limit("10/hour")

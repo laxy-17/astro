@@ -140,7 +140,8 @@ PLANET_MAP = {
     'Rahu': swe.TRUE_NODE,
     'Uranus': swe.URANUS,
     'Neptune': swe.NEPTUNE,
-    'Pluto': swe.PLUTO
+    'Pluto': swe.PLUTO,
+    'Ketu': swe.TRUE_NODE # Ketu is 180 deg from Rahu
 }
 
 SIGNS = [
@@ -148,6 +149,12 @@ SIGNS = [
     "Leo", "Virgo", "Libra", "Scorpio", 
     "Sagittarius", "Capricorn", "Aquarius", "Pisces"
 ]
+
+def get_sign_owner(sign_name: str) -> str:
+    for planet, info in PLANET_INFO.items():
+        if sign_name in info.get('own', []):
+            return planet
+    return None
 
 # Planet Data for Strength Calculation
 PLANET_INFO = {
@@ -1523,46 +1530,16 @@ def calculate_special_times(
     and Abhijit Muhurta for the given day.
     """
     
-    # 1. Get Sunrise/Sunset
-    tz = pytz.timezone(timezone_str)
-    
-    # Approx noon UTC for calculation
-    noon_utc = datetime.combine(date_obj, time(12, 0), tzinfo=tz).astimezone(timezone.utc)
-    jd_noon = swe.julday(noon_utc.year, noon_utc.month, noon_utc.day, 12.0)
-    
-    geopos = (lon, lat, 0)
-    res_rise = swe.rise_trans(
-        jd_noon, swe.SUN, swe.CALC_RISE | swe.BIT_DISC_CENTER, geopos
-    )
-    res_set = swe.rise_trans(
-        jd_noon, swe.SUN, swe.CALC_SET | swe.BIT_DISC_CENTER, geopos
-    )
-    
-    # Check for polar day/night errors (fallback)
-    # Swisseph returns (0, (val,)) on success
-    rise_ok = isinstance(res_rise, tuple) and res_rise[0] == 0
-    set_ok = isinstance(res_set, tuple) and res_set[0] == 0
+    # 1. Get Sunrise/Sunset using the robust helper
+    try:
+        from .utils.timezone_helper import get_sunrise_sunset
+        sunrise_dt, sunset_dt = get_sunrise_sunset(lat, lon, date_obj)
+    except Exception as e:
+        logger.warning(f"Sunrise calculation failed, using fallback: {e}")
+        tz = pytz.timezone(timezone_str)
+        sunrise_dt = datetime.combine(date_obj, time(6, 0), tz)
+        sunset_dt = datetime.combine(date_obj, time(18, 0), tz)
 
-    if not rise_ok or not set_ok:
-        # Fallback: 6am to 6pm local
-        sunrise_dt = datetime.combine(date_obj, time(6,0), tz)
-        sunset_dt = datetime.combine(date_obj, time(18,0), tz)
-    else:
-        sunrise_jd = res_rise[1][0]
-        sunset_jd = res_set[1][0]
-        
-        # Convert to Local Datetime
-        def jd_to_dt(jd):
-            y, m, d, h_float = swe.revjul(jd)
-            h = int(h_float)
-            mn = int((h_float - h) * 60)
-            s = int(((h_float - h) * 60 - mn) * 60)
-            # UTC
-            dt_utc = datetime(y, m, d, h, mn, s, tzinfo=timezone.utc)
-            return dt_utc.astimezone(tz)
-
-        sunrise_dt = jd_to_dt(sunrise_jd)
-        sunset_dt = jd_to_dt(sunset_jd)
     
     day_duration = (sunset_dt - sunrise_dt).total_seconds()
     segment_duration = day_duration / 8.0 # 8 parts for Kalams
@@ -1699,12 +1676,17 @@ def calculate_daily_panchanga_extended(
     vara_name = WEEKDAYS[vedic_day_idx]
     vara_lord = PLANET_ORDER[vedic_day_idx]
     
+    sun_rasi = get_sign_from_longitude(sun_lon)
+    moon_rasi = get_sign_from_longitude(moon_lon)
+
     return PanchangaExtended(
         tithi=tithi_data,
         nakshatra=nakshatra_data,
         yoga=yoga_data,
         karana=karana_data,
-        vara=VaraData(name=vara_name, lord=vara_lord)
+        vara=VaraData(name=vara_name, lord=vara_lord),
+        sun_rasi=sun_rasi,
+        moon_rasi=moon_rasi
     )
 
 def calculate_tithi_with_end_time(sun_lon: float, moon_lon: float, jd: float, lat: float, lon: float) -> TithiDataExtended:
@@ -1764,27 +1746,42 @@ def calculate_karana_with_end_time(sun_lon: float, moon_lon: float, jd: float, l
     return KaranaDataExtended(name=karana_name, number=k_index + 1, end_time=end_dt.strftime("%H:%M:%S"))
 
 def calculate_auspicious_timings_extended(sunrise: datetime, sunset: datetime, lat: float, lon: float) -> AuspiciousTimings:
+    """
+    A more detailed version used for the main Panchanga dashboard.
+    Unified with calculate_special_times to prevent drift.
+    """
     day_duration = sunset - sunrise
-    noon = sunrise + (day_duration / 2)
-    abhijit_start = noon - timedelta(minutes=24)
-    abhijit_end = noon + timedelta(minutes=24)
-    brahma_start = sunrise - timedelta(hours=1, minutes=36)
+    
+    # Abhijit: 8th Muhurta out of 15
+    muhurta_len = day_duration / 15.0
+    abhijit_start = sunrise + (muhurta_len * 7)
+    abhijit_end = sunrise + (muhurta_len * 8)
+    
+    # Brahma: Approx 96 mins before sunrise (end 48 mins before)
+    brahma_start = sunrise - timedelta(minutes=96)
     brahma_end = sunrise - timedelta(minutes=48)
-    weekday_idx = sunrise.weekday()
-    rahu_map = { 0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8 }
-    segment_idx = rahu_map[weekday_idx] - 1
-    segment_len = day_duration / 8
-    rahu_start = sunrise + (segment_len * segment_idx)
-    rahu_end = rahu_start + segment_len
-    gulika_map = { 6: 7, 0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 }
-    g_seg = gulika_map[weekday_idx] - 1
-    gulika_start = sunrise + (segment_len * g_seg)
-    gulika_end = gulika_start + segment_len
-    yamaganda_map = { 6: 5, 0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6 }
-    y_seg = yamaganda_map[weekday_idx] - 1
-    yamaganda_start = sunrise + (segment_len * y_seg)
-    yamaganda_end = yamaganda_start + segment_len
-    return AuspiciousTimings(abhijit_muhurta=AuspiciousTiming(start=abhijit_start.strftime("%H:%M:%S"), end=abhijit_end.strftime("%H:%M:%S")), brahma_muhurta=AuspiciousTiming(start=brahma_start.strftime("%H:%M:%S"), end=brahma_end.strftime("%H:%M:%S")), rahu_kaal=AuspiciousTiming(start=rahu_start.strftime("%H:%M:%S"), end=rahu_end.strftime("%H:%M:%S")), gulika_kaal=AuspiciousTiming(start=gulika_start.strftime("%H:%M:%S"), end=gulika_end.strftime("%H:%M:%S")), yamaganda_kaal=AuspiciousTiming(start=yamaganda_start.strftime("%H:%M:%S"), end=yamaganda_end.strftime("%H:%M:%S")))
+    
+    weekday_idx = sunrise.weekday() # 0=Mon, 6=Sun
+    segment_len = day_duration / 8.0
+    
+    # Sunday is 6 in Python
+    rahu_map = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
+    yamaganda_map = {0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6, 6: 5}
+    gulika_map = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 7}
+    
+    def get_seg(seg_num):
+        start = sunrise + (segment_len * (seg_num - 1))
+        end = sunrise + (segment_len * seg_num)
+        return AuspiciousTiming(start=start.strftime("%I:%M %p"), end=end.strftime("%I:%M %p"))
+
+    return AuspiciousTimings(
+        abhijit_muhurta=AuspiciousTiming(start=abhijit_start.strftime("%I:%M %p"), end=abhijit_end.strftime("%I:%M %p")),
+        brahma_muhurta=AuspiciousTiming(start=brahma_start.strftime("%I:%M %p"), end=brahma_end.strftime("%I:%M %p")),
+        rahu_kaal=get_seg(rahu_map[weekday_idx]),
+        yamaganda_kaal=get_seg(yamaganda_map[weekday_idx]),
+        gulika_kaal=get_seg(gulika_map[weekday_idx])
+    )
+
 
 def get_hindu_calendar_info(target_date: date, p_data: PanchangaExtended) -> HinduCalendar:
     months = ["Chaitra", "Vaisakha", "Jyaistha", "Ashadha", "Sravana", "Bhadrapada", "Asvina", "Kartika", "Margasirsa", "Pausa", "Magha", "Phalguna"]

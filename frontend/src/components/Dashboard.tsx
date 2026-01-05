@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import type { ChartResponse, BirthDetails, CoreInsights } from '../api/client';
 import { calculateChart, getDailyInsight, getDoshaReport, generateCoreInsights, saveChart } from '../api/client';
 import { Logo } from './Logo';
-import { ControlPanel } from './ControlPanel';
-import { SouthIndianChart } from './SouthIndianChart';
-import { NorthIndianChart } from './NorthIndianChart';
-import { PlanetaryTable } from './PlanetaryTable';
+
+import { ChartsTab } from './ChartsTab';
+import { NorthIndianChartParchment } from './charts/NorthIndianChartParchment';
+import { SouthIndianChartParchment } from './charts/SouthIndianChartParchment';
+import { PlanetPositionsTable } from './tables/PlanetPositionsTable';
 import { DashaTab } from './DashaTab';
-import { DivisionalChartsTab } from './DivisionalChartsTab';
 import { ChartLibrary } from './ChartLibrary';
-import { generatePDF } from '../utils/pdfGenerator';
-import { BirthParticulars } from './BirthParticulars';
 import { TransitsTab } from './TransitsTab';
 import { InsightsPanel } from './InsightsPanel';
 import { LocationSelector } from './LocationSelector';
@@ -19,14 +17,14 @@ import type { LocationData } from '../api/client';
 import { DailyMentor } from './DailyMentor';
 import { UnifiedPanchanga } from './UnifiedPanchanga';
 
-
 // Shadcn UI Imports
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, Save, FileText, Library, Compass, Layout, Layers, Orbit, MapPin, RotateCcw } from "lucide-react"
+import { Sparkles, Save, FileText, Library, Compass, Layout, Layers, Orbit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SimpleToast } from "@/components/ui/SimpleToast";
 import { PrintOptionsModal } from "@/components/PrintOptionsModal";
+import { ChartsEmptyState } from './ChartsEmptyState';
 
 interface PersistentFormProps {
     onSuccess: (data: ChartResponse, details: BirthDetails) => void;
@@ -40,10 +38,14 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
 
     // State for controlled inputs
     const [details, setDetails] = useState<BirthDetails>({
-        date: '',
-        time: '',
-        latitude: 0,
-        longitude: 0,
+        date: '1991-04-28',
+        time: '13:51',
+        location_city: 'Pomona',
+        location_state: 'California',
+        location_country: 'USA',
+        latitude: 34.0553,
+        longitude: -117.7514,
+        location_timezone: 'America/Los_Angeles',
         ayanamsa_mode: ayanamsa
     });
 
@@ -86,8 +88,18 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
     };
 
     const handleReset = () => {
-        const empty = { date: '', time: '', latitude: 0, longitude: 0, ayanamsa_mode: ayanamsa };
-        setDetails(empty);
+        const defaultState = {
+            date: '1991-04-28',
+            time: '13:51',
+            location_city: 'Pomona',
+            location_state: 'California',
+            location_country: 'USA',
+            latitude: 34.0553,
+            longitude: -117.7514,
+            location_timezone: 'America/Los_Angeles',
+            ayanamsa_mode: ayanamsa
+        };
+        setDetails(defaultState);
         localStorage.removeItem('last_birth_details');
     };
 
@@ -109,87 +121,175 @@ const PersistentForm: React.FC<PersistentFormProps> = ({ onSuccess, ayanamsa, de
     };
 
     return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-bold text-violet-600 flex items-center gap-2">
-                <span className="text-xl">✨</span> Birth Details
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                    <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error text-sm">
-                        {error}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                        <input
-                            type="date"
-                            required
-                            value={details.date}
-                            onChange={(e) => handleChange('date', e.target.value)}
-                            className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30 text-sm"
-                        />
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</label>
-                        <input
-                            type="time"
-                            required
-                            value={details.time}
-                            onChange={(e) => handleChange('time', e.target.value)}
-                            className="w-full bg-white border border-skyblue-200 rounded-md px-3 py-2 text-neutral-500 focus:outline-none focus:ring-2 focus:ring-skyblue-400/30 text-sm"
-                        />
+        <Card className="bg-white border-0 shadow-xl shadow-skyblue-500/5 overflow-hidden ring-1 ring-black/5">
+            <CardContent className="p-6 space-y-8">
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+                    <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+                        <span className="text-xl">✨</span> Birth Details
+                    </h3>
+                    <div className="text-sm italic text-neutral-400 bg-neutral-50 px-3 py-1 rounded-full border border-neutral-100">
+                        Please enter
                     </div>
                 </div>
-
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</label>
-                    <LocationSelector
-                        currentLocation={{
-                            city: details.location_city || '',
-                            region: details.location_state,
-                            country: details.location_country || '',
-                            latitude: details.latitude,
-                            longitude: details.longitude,
-                            timezone: details.location_timezone || 'UTC'
-                        }}
-                        onLocationChange={handleLocationSelect}
-                    />
-                    {details.location_city && (
-                        <div className="text-[11px] font-medium text-violet-500 px-1 pt-1 flex items-center gap-1">
-                            <MapPin className="w-3 h-3" /> {details.location_city}, {details.location_country}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {error && (
+                        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error text-sm">
+                            {error}
                         </div>
                     )}
-                    <div className="flex gap-2 text-[10px] text-muted-foreground font-mono px-1">
-                        <span>Lat: {details.latitude?.toFixed(4)}</span>
-                        <span>Long: {details.longitude?.toFixed(4)}</span>
-                    </div>
-                </div>
 
-                <div className="flex gap-2 pt-2">
-                    <Button
-                        type="submit"
-                        disabled={loading}
-                        size="default"
-                        className="flex-1 bg-skyblue-500 hover:bg-skyblue-600 text-white font-bold shadow-md shadow-skyblue-500/20 h-10"
-                    >
-                        {loading ? 'Calculating...' : 'Calculate Chart'}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="icon"
-                        onClick={handleReset}
-                        className="bg-skyblue-50 hover:bg-skyblue-100 text-skyblue-600 border border-skyblue-200 h-10 w-10 min-w-[40px]"
-                        title="Reset Form"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                    </Button>
-                </div>
-            </form>
-        </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                                Date of Birth
+                            </label>
+                            <input
+                                type="date"
+                                required
+                                value={details.date}
+                                onChange={(e) => handleChange('date', e.target.value)}
+                                placeholder="YYYY-MM-DD"
+                                className="w-full bg-neutral-50 hover:bg-white border border-neutral-200 rounded-lg px-2 py-3 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm font-medium"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                                Time of Birth
+                            </label>
+                            <input
+                                type="time"
+                                required
+                                step="1"
+                                value={details.time}
+                                onChange={(e) => handleChange('time', e.target.value)}
+                                placeholder="HH:MM:SS"
+                                className="w-full bg-neutral-50 hover:bg-white border border-neutral-200 rounded-lg px-2 py-3 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm font-medium"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                            Birth Location
+                        </label>
+                        {/* Simplified Location Section - No Outer Box */}
+                        <div className="flex flex-col gap-3">
+                            {details.location_city ? (
+                                <div className="flex flex-col gap-2">
+                                    <h4 className="text-base font-bold text-neutral-800 leading-snug break-words">
+                                        {details.location_city}, {details.location_country}
+                                    </h4>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <LocationSelector
+                                            variant="button"
+                                            currentLocation={{
+                                                city: details.location_city || '',
+                                                region: details.location_state,
+                                                country: details.location_country || '',
+                                                latitude: details.latitude,
+                                                longitude: details.longitude,
+                                                timezone: details.location_timezone || 'UTC'
+                                            }}
+                                            onLocationChange={handleLocationSelect}
+                                            buttonLabel="Change Location"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <LocationSelector
+                                    currentLocation={{
+                                        city: details.location_city || '',
+                                        region: details.location_state,
+                                        country: details.location_country || '',
+                                        latitude: details.latitude,
+                                        longitude: details.longitude,
+                                        timezone: details.location_timezone || 'UTC'
+                                    }}
+                                    onLocationChange={handleLocationSelect}
+                                />
+                            )}
+                        </div>
+
+                        {/* Separate Lat/Long Inputs */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                                    Latitude
+                                </label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={details.latitude}
+                                    onChange={(e) => handleChange('latitude', parseFloat(e.target.value))}
+                                    className="w-full bg-neutral-50 hover:bg-white border border-neutral-200 rounded-lg px-3 py-3 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm font-medium"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                                    Longitude
+                                </label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={details.longitude}
+                                    onChange={(e) => handleChange('longitude', parseFloat(e.target.value))}
+                                    className="w-full bg-neutral-50 hover:bg-white border border-neutral-200 rounded-lg px-3 py-3 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm font-medium"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider block">
+                            Ayanamsa System
+                        </label>
+                        <div className="flex flex-col gap-3">
+                            <select
+                                value={details.ayanamsa_mode || ayanamsa}
+                                onChange={(e) => handleChange('ayanamsa_mode', e.target.value)}
+                                className="w-full bg-neutral-50 hover:bg-white border border-neutral-200 rounded-lg px-4 py-3 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm font-medium appearance-none"
+                            >
+                                <option value="LAHIRI">Lahiri (Default)</option>
+                                <option value="RAMAN">Raman</option>
+                                <option value="KRISHNAMURTI">KP System</option>
+                                <option value="FAGAN_BRADLEY">Fagan-Bradley</option>
+                                <option value="SAYANA">Tropical (Sayana)</option>
+                            </select>
+
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-neutral-100">
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            size="lg"
+                            className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 h-12 text-sm uppercase tracking-wide transition-all active:scale-[0.98]"
+                        >
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Calculating...
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    Calculate Chart
+                                </span>
+                            )}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleReset}
+                            className="text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50"
+                        >
+                            Reset
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
     );
 };
 
@@ -202,14 +302,14 @@ interface Props {
 export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, activeView = 'dashboard' }) => {
     const [chartData, setChartData] = useState<ChartResponse | null>(initialData);
     const [currentDetails, setCurrentDetails] = useState<BirthDetails | null>(initialDetails);
-    const [chartStyle, setChartStyle] = useState<'south' | 'north'>('south');
+
     const [ayanamsa, setAyanamsa] = useState<string>(initialDetails?.ayanamsa_mode || 'LAHIRI');
 
     // Main Tabs State
     const [activeTab, setActiveTab] = useState<'charts' | 'unified-panchang' | 'dashas' | 'transits' | 'mentor'>('mentor');
 
     // Sub-states for Charts Tab
-    const [divisionalMode, setDivisionalMode] = useState(false); // false = Rashi, true = Varga
+
 
     const [showLibrary, setShowLibrary] = useState(false);
 
@@ -307,25 +407,11 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
 
 
 
-    const handleAyanamsaChange = async (newMode: string) => {
-        setAyanamsa(newMode);
-        if (currentDetails) {
-            try {
-                const newDetails = { ...currentDetails, ayanamsa_mode: newMode };
-                const data = await calculateChart(newDetails);
-                setCurrentDetails(newDetails);
-                setChartData(data);
-                fetchInsights(data, newDetails);
-            } catch (e) {
-                console.error("Recalculation failed", e);
-            }
-        }
-    };
-
     const handleChartCalculated = (data: ChartResponse, details: BirthDetails) => {
         setCurrentDetails(details);
         setChartData(data);
         fetchInsights(data, details);
+        setActiveTab('charts');
     };
 
     const handleSaveChart = async () => {
@@ -352,6 +438,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
             setChartData(data);
             fetchInsights(data, details);
             localStorage.setItem('last_birth_details', JSON.stringify(details));
+            setActiveTab('charts');
         } catch (e) {
             console.error(e);
             alert("Failed to load chart calculations.");
@@ -380,34 +467,49 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
     return (
         <div className="min-h-screen bg-skyblue-100 text-neutral-500 font-sans">
             {/* Top Header */}
-            <header className="flex items-center justify-between p-4 border-b border-skyblue-200/50 bg-skyblue-100/80 backdrop-blur-md sticky top-0 z-50">
+            <header className="flex items-center justify-between p-4 border-b border-skyblue-200/50 bg-skyblue-50/80 backdrop-blur-md sticky top-0 z-50 shadow-sm transition-shadow duration-200">
                 <div className="flex items-center gap-3">
                     <Logo size="small" animated={true} withTagline={true} tagline="precision" />
                     {currentDetails && (
                         <div className="hidden md:flex flex-col ml-4 px-3 py-1 bg-white/40 rounded-lg border border-skyblue-200/30">
                             <span className="text-xs text-neutral-400 uppercase tracking-wider">Current Chart</span>
-                            <span className="text-sm font-medium text-violet-500">
+                            <span className="text-sm font-medium text-violet-600">
                                 {currentDetails.date} • {currentDetails.time}
                             </span>
                         </div>
                     )}
                 </div>
                 <div className="flex gap-2">
-                    <Button size="sm" onClick={() => setShowLibrary(true)} className="bg-violet-100 hover:bg-violet-200 text-violet-600 border border-violet-200">
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowLibrary(true)}
+                        className="text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+                    >
                         <Library className="w-4 h-4 mr-2" /> Library
                     </Button>
                     {chartData && (
                         <>
-                            <Button size="sm" onClick={handleSaveChart} className="bg-status-success/10 hover:bg-status-success/20 text-status-success border border-status-success/30">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleSaveChart}
+                                className="border-skyblue-500 text-skyblue-600 hover:bg-skyblue-50"
+                            >
                                 <Save className="w-4 h-4 mr-2" /> Save
                             </Button>
-                            <Button size="sm" onClick={handleDownloadPDF} className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning border border-status-warning/30">
-                                <FileText className="w-4 h-4 mr-2" /> PDF
+                            <Button
+                                size="sm"
+                                onClick={handleDownloadPDF}
+                                className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+                            >
+                                <FileText className="w-4 h-4 mr-2" /> Export PDF
                             </Button>
                         </>
                     )}
                 </div>
             </header>
+            <div className="h-px bg-white/20 w-full" /> {/* Subtle Header Extender/Divider */}
 
             {/* Main Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 p-6 max-w-[1920px] mx-auto">
@@ -425,15 +527,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                         </CardContent>
                     </Card>
 
-                    <Card className="glass-panel border-border bg-card/50">
-                        <CardContent className="p-6">
-                            <ControlPanel
-                                ayanamsa={ayanamsa}
-                                onAyanamsaChange={handleAyanamsaChange}
-                            />
-
-                        </CardContent>
-                    </Card>
+                    {/* ControlPanel is now integrated into PersistentForm */}
                 </aside>
 
                 {/* Main Content */}
@@ -441,26 +535,31 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
 
 
                     <Tabs defaultValue="mentor" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-5 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm mb-6">
-                            <TabsTrigger value="mentor" aria-label="Daily Mentor" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                        <TabsList className="grid w-full grid-cols-5 bg-white border border-skyblue-200/50 p-1 rounded-xl shadow-sm mb-6 h-auto">
+                            <TabsTrigger value="mentor" aria-label="Daily Mentor" className="relative data-[state=active]:text-violet-600 data-[state=active]:bg-violet-50/50 rounded-lg transition-all py-2.5">
                                 <Sparkles className="w-4 h-4 mr-2" />
-                                <span className="hidden sm:inline">Mentor</span>
+                                <span className="hidden sm:inline">Daily Mentor</span>
+                                <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-violet-500 rounded-full scale-x-0 data-[state=active]:scale-x-100 transition-transform origin-center" />
                             </TabsTrigger>
-                            <TabsTrigger value="unified-panchang" aria-label="Panchang" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white rounded-lg transition-all">
+                            <TabsTrigger value="unified-panchang" aria-label="Panchang" className="relative data-[state=active]:text-violet-600 data-[state=active]:bg-violet-50/50 rounded-lg transition-all py-2.5">
                                 <Compass className="w-4 h-4 mr-2" />
                                 <span className="hidden sm:inline">Panchang</span>
+                                <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-violet-500 rounded-full scale-x-0 data-[state=active]:scale-x-100 transition-transform origin-center" />
                             </TabsTrigger>
-                            <TabsTrigger value="charts" aria-label="Birth Charts" className="data-[state=active]:bg-violet-400 data-[state=active]:text-white rounded-lg transition-all">
+                            <TabsTrigger value="charts" aria-label="Birth Charts" className="relative data-[state=active]:text-violet-600 data-[state=active]:bg-violet-50/50 rounded-lg transition-all py-2.5">
                                 <Layout className="w-4 h-4 mr-2" />
-                                <span className="hidden sm:inline">Charts</span>
+                                <span className="hidden sm:inline">Birth Charts</span>
+                                <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-violet-500 rounded-full scale-x-0 data-[state=active]:scale-x-100 transition-transform origin-center" />
                             </TabsTrigger>
-                            <TabsTrigger value="dashas" aria-label="Dasha Periods" className="data-[state=active]:bg-skyblue-400 data-[state=active]:text-white rounded-lg transition-all">
+                            <TabsTrigger value="dashas" aria-label="Dasha Periods" className="relative data-[state=active]:text-skyblue-600 data-[state=active]:bg-skyblue-50/50 rounded-lg transition-all py-2.5">
                                 <Layers className="w-4 h-4 mr-2" />
                                 <span className="hidden sm:inline">Dashas</span>
+                                <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-skyblue-500 rounded-full scale-x-0 data-[state=active]:scale-x-100 transition-transform origin-center" />
                             </TabsTrigger>
-                            <TabsTrigger value="transits" aria-label="Planetary Transits" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white rounded-lg transition-all">
+                            <TabsTrigger value="transits" aria-label="Planetary Transits" className="relative data-[state=active]:text-violet-700 data-[state=active]:bg-violet-50/50 rounded-lg transition-all py-2.5">
                                 <Orbit className="w-4 h-4 mr-2" />
                                 <span className="hidden sm:inline">Transits</span>
+                                <div className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-violet-600 rounded-full scale-x-0 data-[state=active]:scale-x-100 transition-transform origin-center" />
                             </TabsTrigger>
                         </TabsList>
 
@@ -500,101 +599,32 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
 
                         {/* TAB 1: CHARTS */}
                         <TabsContent value="charts" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {(
-                                <div className="space-y-6">
-                                    {currentDetails && <BirthParticulars details={currentDetails} />}
-
-                                    <div className="flex gap-2 relative z-10">
+                            <div className="space-y-6">
+                                {chartData && (
+                                    <div className="flex justify-between items-center bg-white/40 p-2 rounded-xl border border-skyblue-100 backdrop-blur-sm">
+                                        <div className="flex gap-2">
+                                            <Button size="sm" onClick={handleDownloadPDF} className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning border border-status-warning/30">
+                                                <FileText className="w-4 h-4 mr-2" /> Export PDF
+                                            </Button>
+                                        </div>
                                         <Button
-                                            variant="glass"
-                                            size="sm"
-                                            className="gap-2 text-primary hover:bg-white/20"
-                                            onClick={handleDownloadPDF}
-                                        >
-                                            <FileText className="w-4 h-4" />
-                                            Export PDF
-                                        </Button>
-                                        <Button
-                                            variant="glass"
+                                            variant="outline"
                                             size="sm"
                                             className="gap-2 text-primary hover:bg-white/20"
                                             onClick={() => setShowLibrary(true)}
                                         >
                                             <Library className="w-4 h-4" />
-                                            Library
+                                            Chart Library
                                         </Button>
                                     </div>
+                                )}
 
-                                    <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
-                                        {/* Chart Visualization */}
-                                        <div className="space-y-4">
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setChartStyle('south')}
-                                                    className={chartStyle === 'south' ? 'bg-skyblue-500 text-white' : 'text-neutral-400 hover:bg-skyblue-50'}
-                                                >
-                                                    South Indian
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setChartStyle('north')}
-                                                    className={chartStyle === 'north' ? 'bg-skyblue-500 text-white' : 'text-neutral-400 hover:bg-skyblue-50'}
-                                                >
-                                                    North Indian
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setDivisionalMode(!divisionalMode)}
-                                                    className={`ml-auto ${divisionalMode ? 'bg-violet-500 text-white' : 'text-neutral-400 hover:bg-violet-50'}`}
-                                                >
-                                                    {divisionalMode ? 'Show Rashi' : 'Show Vargas'}
-                                                </Button>
-                                            </div>
-
-                                            <Card className={`glass-panel border-border bg-card/40 p-4 relative ${divisionalMode ? 'flex flex-col h-auto min-h-[500px]' : 'aspect-square flex items-center justify-center overflow-hidden'}`}>
-                                                {chartData ? (
-                                                    !divisionalMode ? (
-                                                        chartStyle === 'south' ? (
-                                                            <SouthIndianChart planets={chartData.planets} ascendantSign={chartData.ascendant_sign} />
-                                                        ) : (
-                                                            <NorthIndianChart planets={chartData.planets} houses={chartData.houses} />
-                                                        )
-                                                    ) : (
-                                                        <DivisionalChartsTab chartData={chartData} />
-                                                    )
-                                                ) : (
-                                                    <div className="text-center text-muted-foreground p-10">
-                                                        <div className="text-4xl mb-4 opacity-50">🌌</div>
-                                                        <p>Enter birth details to generate chart</p>
-                                                    </div>
-                                                )}
-                                            </Card>
-                                        </div>
-
-                                        {/* Planetary Table */}
-                                        <Card className="glass-panel h-full bg-card/40">
-                                            {chartData ? (
-                                                <PlanetaryTable
-                                                    planets={chartData.planets}
-                                                    ascendant={{
-                                                        sign: chartData.ascendant_sign,
-                                                        degree: chartData.ascendant,
-                                                        house: 1
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-muted-foreground p-10">
-                                                    Planetary details waiting...
-                                                </div>
-                                            )}
-                                        </Card>
-                                    </div>
-                                </div>
-                            )}
+                                {chartData && currentDetails ? (
+                                    <ChartsTab chartData={chartData} birthDetails={currentDetails} />
+                                ) : (
+                                    <ChartsEmptyState />
+                                )}
+                            </div>
                         </TabsContent>
 
 
@@ -610,7 +640,10 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                                             birthDate={currentDetails.date}
                                         />
                                     ) : (
-                                        <div className="p-10 text-center text-muted-foreground glass-panel rounded-xl">Calculate chart first</div>
+                                        <div className="p-10 text-center text-neutral-400 bg-white/50 border-2 border-dashed border-skyblue-100 rounded-3xl min-h-[300px] flex flex-col items-center justify-center">
+                                            <Layers className="w-12 h-12 mb-4 opacity-20" />
+                                            <p className="font-medium">Calculate chart to view dynamic dasha periods</p>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -620,7 +653,9 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                         <TabsContent value="transits" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {activeTab === 'transits' && (
                                 <Card className="glass-panel p-6 bg-card/40">
-                                    <TransitsTab />
+                                    <CardContent>
+                                        <TransitsTab />
+                                    </CardContent>
                                 </Card>
                             )}
                         </TabsContent>
@@ -685,7 +720,7 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                         <div className="text-center border-b-2 border-violet-500 pb-6 mb-8">
                             <h1 className="text-4xl font-bold text-violet-800 mb-2">Vedic Astrology Report</h1>
                             <div className="text-lg text-neutral-600">
-                                Prepared for <span className="font-bold text-black">{currentDetails?.name || 'User'}</span>
+                                Prepared for <span className="font-bold text-black">{currentDetails?.location_city || 'User'}</span>
                             </div>
                             <div className="text-sm text-neutral-400 mt-2">
                                 {currentDetails?.date} at {currentDetails?.time} • {currentDetails?.location_city || 'Unknown Location'}
@@ -700,13 +735,13 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                                     <div className="space-y-2">
                                         <h3 className="text-center font-bold text-neutral-500">South Indian</h3>
                                         <div className="border border-neutral-200 rounded-lg p-2">
-                                            <SouthIndianChart planets={chartData.planets} ascendantSign={chartData.ascendant_sign} />
+                                            <SouthIndianChartParchment planets={chartData.planets} ascendantSign={chartData.ascendant_sign} birthDetails={{ name: currentDetails!.location_city || 'Chart', date: currentDetails!.date, time: currentDetails!.time, location: currentDetails!.location_city || '' }} />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <h3 className="text-center font-bold text-neutral-500">North Indian</h3>
                                         <div className="border border-neutral-200 rounded-lg p-2 aspect-square flex items-center bg-white">
-                                            <NorthIndianChart planets={chartData.planets} houses={chartData.houses} />
+                                            <NorthIndianChartParchment planets={chartData.planets} houses={chartData.houses} birthDetails={{ name: currentDetails!.location_city || 'Chart', date: currentDetails!.date, time: currentDetails!.time, location: currentDetails!.location_city || '' }} />
                                         </div>
                                     </div>
                                 </div>
@@ -717,9 +752,9 @@ export const Dashboard: React.FC<Props> = ({ initialData, initialDetails, active
                             <section className="space-y-4 break-inside-avoid">
                                 <h2 className="text-2xl font-bold text-neutral-700 border-l-4 border-violet-400 pl-3">Planetary Details</h2>
                                 <div className="border border-neutral-200 rounded-xl overflow-hidden">
-                                    <PlanetaryTable
+                                    <PlanetPositionsTable
                                         planets={chartData.planets}
-                                        ascendant={{ sign: chartData.ascendant_sign, degree: chartData.ascendant, house: 1 }}
+                                        ascendant={{ sign: chartData.ascendant_sign, degree: chartData.ascendant }}
                                     />
                                 </div>
                             </section>

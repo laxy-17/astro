@@ -1,17 +1,24 @@
-
 import React, { useState } from 'react';
-import { SouthIndianChart } from './SouthIndianChart';
-import type { ChartResponse, PlanetPosition } from '../api/client';
+import type { ChartResponse, PlanetPosition, House } from '../api/client';
+import { SouthIndianChartParchment } from './charts/SouthIndianChartParchment';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
     chartData: ChartResponse;
+    chartStyle: 'north' | 'south';
+    birthDetails: {
+        name: string;
+        date: string;
+        time: string;
+        location: string;
+    };
+    rightPanelContent?: React.ReactNode;
 }
 
-export const DivisionalChartsTab: React.FC<Props> = ({ chartData }) => {
+export const DivisionalChartsTab: React.FC<Props> = ({ chartData, birthDetails, rightPanelContent }) => {
     const [selectedVarga, setSelectedVarga] = useState<string>('D1');
 
     const vargas = chartData.divisional_charts ? Object.keys(chartData.divisional_charts).sort((a, b) => {
-        // Sort D1, D2, D3... numerically
         const numA = parseInt(a.replace('D', ''));
         const numB = parseInt(b.replace('D', ''));
         return numA - numB;
@@ -22,6 +29,7 @@ export const DivisionalChartsTab: React.FC<Props> = ({ chartData }) => {
             return {
                 planets: chartData.planets,
                 ascendantSign: chartData.ascendant_sign,
+                houses: chartData.houses,
                 title: 'Rashi (D1)'
             };
         }
@@ -29,75 +37,111 @@ export const DivisionalChartsTab: React.FC<Props> = ({ chartData }) => {
         const varga = chartData.divisional_charts?.[selectedVarga];
         if (!varga) return null;
 
-        // Map VargaPosition to PlanetPosition (partial)
         const mappedPlanets: PlanetPosition[] = varga.planets.map(vp => ({
             name: vp.planet,
             sign: vp.sign,
             house: vp.house,
-            // Mock other fields not needed for display
             longitude: 0, latitude: 0, speed: 0, retrograde: false,
             nakshatra: '', nakshatra_lord: ''
+        }));
+
+        // Generate houses for Varga chart based on ascendant sign
+        const signs = [
+            'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+            'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+        ];
+        const startIndex = signs.indexOf(varga.ascendant_sign);
+        const derivedHouses: House[] = Array.from({ length: 12 }, (_, i) => ({
+            number: i + 1,
+            sign: signs[(startIndex + i) % 12]
         }));
 
         return {
             planets: mappedPlanets,
             ascendantSign: varga.ascendant_sign,
+            houses: derivedHouses,
             title: `${varga.name} Chart`
         };
     };
 
     const currentVarga = getVargaData();
 
+    const descriptions: Record<string, string> = {
+        'D1': "Main Birth Chart (Rashi). Shows physical body and general destiny.",
+        'D9': "Navamsha. Shows strength of planets, marriage, and spiritual path.",
+        'D10': "Dasamsha. Shows career, profession, and status in society.",
+        'D2': "Hora. Wealth and resources.",
+        'D3': "Drekkana. Siblings, courage, and motivation.",
+        'D7': "Saptamsha. Children and creative output.",
+        'D12': "Dwadashamsha. Parents and ancestry.",
+        'D30': "Trimshamsha. Misfortunes and health issues.",
+        'D60': "Shashtyamsha. Past life karma and fine details."
+    };
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Varga Selector */}
-            <div className="flex flex-wrap gap-2 pb-2">
-                {vargas.map(v => (
-                    <button
-                        key={v}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${selectedVarga === v
-                                ? 'bg-violet-600 text-white shadow-sm'
-                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                            }`}
-                        onClick={() => setSelectedVarga(v)}
-                    >
-                        {v}
-                    </button>
-                ))}
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">Varga Selection</span>
+                <div className="flex flex-wrap gap-2">
+                    {vargas.map(v => (
+                        <button
+                            key={v}
+                            onClick={() => setSelectedVarga(v)}
+                            className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all border shadow-sm ${selectedVarga === v
+                                ? 'bg-skyblue-500 text-white border-skyblue-600'
+                                : 'bg-white text-gray-400 border-gray-100 hover:border-skyblue-200 hover:text-skyblue-500'
+                                }`}
+                        >
+                            {v}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Chart Display */}
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '300px' }}>
+            <div className="grid grid-cols-1 2xl:grid-cols-[1.5fr_1fr] gap-8">
+                <div className="w-full max-w-lg mx-auto aspect-square">
                     {currentVarga ? (
-                        <SouthIndianChart
+                        <SouthIndianChartParchment
                             planets={currentVarga.planets}
                             ascendantSign={currentVarga.ascendantSign}
+                            birthDetails={{ ...birthDetails, name: currentVarga.title }}
                         />
                     ) : (
-                        <div>Select a chart</div>
+                        <div className="flex items-center justify-center border-2 border-dashed border-gray-100 rounded-3xl text-gray-300 font-medium h-full aspect-square">
+                            Select a divisional chart to view
+                        </div>
                     )}
                 </div>
 
-                {/* Legend or Info could go here */}
-                <div style={{ width: '250px', fontSize: '0.85rem', color: '#555' }}>
-                    <div className="panel">
-                        <div className="panel-header">Chart Info</div>
-                        <div className="panel-content">
-                            <strong>{currentVarga?.title}</strong>
-                            <p>
-                                {selectedVarga === 'D1' && "Main Birth Chart (Rashi). Shows physical body and general destiny."}
-                                {selectedVarga === 'D9' && "Navamsha. Shows strength of planets, marriage, and spiritual path."}
-                                {selectedVarga === 'D10' && "Dasamsha. Shows career, profession, and status in society."}
-                                {selectedVarga === 'D2' && "Hora. Wealth and resources."}
-                                {selectedVarga === 'D3' && "Drekkana. Siblings, courage, and motivation."}
-                                {selectedVarga === 'D7' && "Saptamsha. Children and creative output."}
-                                {selectedVarga === 'D12' && "Dwadashamsha. Parents and ancestry."}
-                                {selectedVarga === 'D30' && "Trimshamsha. Misfortunes and health issues."}
-                                {selectedVarga === 'D60' && "Shashtyamsha. Past life karma and fine details."}
+                <div className="space-y-4">
+                    {rightPanelContent}
+                    <Card className="border-skyblue-100 shadow-sm overflow-hidden bg-white">
+                        <CardHeader className="bg-gray-50/50 py-4 px-6 border-b border-skyblue-50">
+                            <CardTitle className="text-sm font-bold text-violet-600 flex items-center gap-2">
+                                <span>📜</span> Chart Analysis: {selectedVarga}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">{currentVarga?.title}</h3>
+                            <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                                {descriptions[selectedVarga] || "Special divisional chart used for deep analysis of specific life areas."}
                             </p>
-                        </div>
-                    </div>
+
+                            <div className="mt-8 pt-6 border-t border-gray-50">
+                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Quick Insights</div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-violet-400"></div>
+                                        <span className="text-sm font-medium text-gray-700">Analyses planetary strength (Bala)</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-skyblue-400"></div>
+                                        <span className="text-sm font-medium text-gray-700">Reveals hidden potential in D1</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>

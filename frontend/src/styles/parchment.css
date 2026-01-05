@@ -1,0 +1,132 @@
+/* ============================================
+   PARCHMENT TEXTURE STYLES
+   ============================================ */
+
+.parchment-background {
+    position: relative;
+    background: linear-gradient(135deg,
+            var(--parchment-light) 0%,
+            var(--parchment-medium) 50%,
+            var(--parchment-light) 100%);
+    background-size: 200% 200%;
+
+    /* Paper texture overlay */
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(212, 196, 168, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(212, 196, 168, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(212, 196, 168, 0.08) 0%, transparent 50%);
+
+    /* Subtle paper texture */
+    filter: contrast(1.05) brightness(1.02);
+}
+
+/* Aging spots and stains */
+.parchment-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 15% 15%, rgba(180, 150, 120, 0.15) 0%, transparent 3%),
+        radial-gradient(circle at 85% 25%, rgba(180, 150, 120, 0.12) 0%, transparent 4%),
+        radial-gradient(circle at 70% 80%, rgba(180, 150, 120, 0.1) 0%, transparent 5%),
+        radial-gradient(circle at 30% 90%, rgba(180, 150, 120, 0.08) 0%, transparent 3%);
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* Decorative border with pattern */
+.parchment-border {
+    border: 4px solid var(--chart-border);
+    border-image: repeating-linear-gradient(45deg,
+            var(--chart-border),
+            var(--chart-border) 10px,
+            var(--chart-lines) 10px,
+            var(--chart-lines) 20px) 4;
+    box-shadow:
+        inset 0 0 20px rgba(200, 75, 49, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+}
+
+/* Decorative corner brackets */
+.corner-bracket {
+    position: absolute;
+    width: 2rem;
+    height: 2rem;
+    border-color: var(--chart-border);
+    opacity: 0.4;
+}
+
+.corner-bracket.top-left {
+    top: 0.5rem;
+    left: 0.5rem;
+    border-left: 2px solid;
+    border-top: 2px solid;
+}
+
+.corner-bracket.top-right {
+    top: 0.5rem;
+    right: 0.5rem;
+    border-right: 2px solid;
+    border-top: 2px solid;
+}
+
+.corner-bracket.bottom-left {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    border-left: 2px solid;
+    border-bottom: 2px solid;
+}
+
+.corner-bracket.bottom-right {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    border-right: 2px solid;
+    border-bottom: 2px solid;
+}
+
+/* ============================================
+   RESPONSIVE PARCHMENT
+   ============================================ */
+@media (max-width: 768px) {
+    .parchment-background {
+        padding: 1rem;
+    }
+
+    .parchment-border {
+        border-width: 3px;
+    }
+}
+
+@media (max-width: 480px) {
+    .parchment-background {
+        padding: 0.5rem;
+    }
+
+    .parchment-border {
+        border-width: 2px;
+    }
+}
+
+/* ============================================
+   PRINT OPTIMIZATION
+   ============================================ */
+@media print {
+    .parchment-background {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .parchment-border {
+        box-shadow: none;
+    }
+
+    /* Ensure colors print correctly */
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

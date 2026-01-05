@@ -1,0 +1,83 @@
+:root {
+    /* ============================================
+     PARCHMENT COLORS
+     ============================================ */
+    --parchment-light: #F5E6D3;
+    /* Light beige/cream */
+    --parchment-medium: #E8D5B7;
+    /* Medium beige */
+    --parchment-dark: #D4C4A8;
+    /* Darker beige for texture */
+
+    /* Chart Borders & Lines */
+    --chart-border: #C84B31;
+    /* Dark orange/red - 4px */
+    --chart-lines: #D97D54;
+    /* Medium orange - 2px */
+    --chart-accent: #E67E50;
+    /* Light orange accent */
+
+    /* Text Colors */
+    --text-parchment-primary: #3E2723;
+    /* Dark brown */
+    --text-parchment-secondary: #5D4037;
+    /* Medium brown */
+    --text-parchment-accent: #C84B31;
+    /* Orange/red emphasis */
+
+    /* Ganesh/Sacred Imagery */
+    --ganesh-opacity: 0.15;
+    /* Subtle watermark */
+    --ganesh-color: #D97D54;
+    /* Orange tint */
+
+    /* ============================================
+     PLANET COLORS (for table)
+     ============================================ */
+    --planet-sun: #E74C3C;
+    /* Red */
+    --planet-moon: #F39C12;
+    /* Orange */
+    --planet-mercury: #27AE60;
+    /* Green */
+    --planet-venus: #E91E63;
+    /* Pink/Magenta */
+    --planet-mars: #C0392B;
+    /* Dark Red */
+    --planet-jupiter: #16A085;
+    /* Teal */
+    --planet-saturn: #8E44AD;
+    /* Purple */
+    --planet-rahu: #3498DB;
+    /* Blue */
+    --planet-ketu: #2980B9;
+    /* Dark Blue */
+
+    /* ============================================
+     RASI COLORS (for table)
+     ============================================ */
+    --rasi-aries: #E91E63;
+    /* Magenta */
+    --rasi-taurus: #00BCD4;
+    /* Cyan */
+    --rasi-gemini: #8BC34A;
+    /* Light Green */
+    --rasi-cancer: #FF9800;
+    /* Orange */
+    --rasi-leo: #F44336;
+    /* Red */
+    --rasi-virgo: #9C27B0;
+    /* Purple */
+    --rasi-libra: #3F51B5;
+    /* Indigo */
+    --rasi-scorpio: #E91E63;
+    /* Magenta */
+    --rasi-sagittarius: #00BCD4;
+    /* Cyan */
+    --rasi-capricorn: #4CAF50;
+    /* Green */
+    --rasi-aquarius: #2196F3;
+    /* Blue */
+    --rasi-pisces: #9C27B0;
+    /* Purple */
+}
