@@ -59,10 +59,19 @@ export const SouthIndianChartParchment: React.FC<Props> = ({
 
                         {/* Internal Lines - Sky Blue */}
                         <line x1="105" y1="2" x2="105" y2="398" stroke="#38BDF8" strokeWidth="2.5" />
-                        <line x1="200" y1="2" x2="200" y2="398" stroke="#38BDF8" strokeWidth="2.5" />
+
+                        {/* Middle Vertical - Broken in center */}
+                        <line x1="200" y1="2" x2="200" y2="105" stroke="#38BDF8" strokeWidth="2.5" />
+                        <line x1="200" y1="295" x2="200" y2="398" stroke="#38BDF8" strokeWidth="2.5" />
+
                         <line x1="295" y1="2" x2="295" y2="398" stroke="#38BDF8" strokeWidth="2.5" />
+
                         <line x1="2" y1="105" x2="398" y2="105" stroke="#38BDF8" strokeWidth="2.5" />
-                        <line x1="2" y1="200" x2="398" y2="200" stroke="#38BDF8" strokeWidth="2.5" />
+
+                        {/* Middle Horizontal - Broken in center */}
+                        <line x1="2" y1="200" x2="105" y2="200" stroke="#38BDF8" strokeWidth="2.5" />
+                        <line x1="295" y1="200" x2="398" y2="200" stroke="#38BDF8" strokeWidth="2.5" />
+
                         <line x1="2" y1="295" x2="398" y2="295" stroke="#38BDF8" strokeWidth="2.5" />
 
                         {/* Render each sign's planets */}
@@ -131,7 +140,7 @@ export const SouthIndianChartParchment: React.FC<Props> = ({
                             {/* Watermark Om */}
                             <text
                                 x="200"
-                                y="180"
+                                y="145"
                                 fontSize="70"
                                 fontWeight="bold"
                                 fill="#0ea5e9"
@@ -145,16 +154,16 @@ export const SouthIndianChartParchment: React.FC<Props> = ({
                             {/* Birth Details Hierarchy */}
                             {birthDetails && (
                                 <>
-                                    <text x="200" y="215" fontSize="16" fill="#6366F1" fontWeight="700" textAnchor="middle">
+                                    <text x="200" y="180" fontSize="16" fill="#6366F1" fontWeight="700" textAnchor="middle">
                                         Rasi Chart
                                     </text>
-                                    <text x="200" y="235" fontSize="11" fill="#1e40af" fontWeight="600" textAnchor="middle">
+                                    <text x="200" y="200" fontSize="11" fill="#1e40af" fontWeight="600" textAnchor="middle">
                                         {birthDetails.name || 'User'}
                                     </text>
-                                    <text x="200" y="252" fontSize="10" fill="#64748b" textAnchor="middle">
+                                    <text x="200" y="215" fontSize="10" fill="#64748b" textAnchor="middle">
                                         {birthDetails.date} • {birthDetails.time}
                                     </text>
-                                    <text x="200" y="265" fontSize="9" fill="#94a3b8" textAnchor="middle" width="90">
+                                    <text x="200" y="227" fontSize="9" fill="#94a3b8" textAnchor="middle" width="90">
                                         {birthDetails.location}
                                     </text>
                                 </>

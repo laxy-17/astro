@@ -58,7 +58,7 @@ export const SouthIndianChart: React.FC<Props> = ({ planets, ascendantSign }) =>
                     {/* Aquarius (1,0) */}
                     <ChartBox sign="Aquarius" planets={getPlanetsInSign("Aquarius")} isLagna={ascendantSign === "Aquarius"} />
                     {/* Center Space (1,1 span 2x2) */}
-                    <div className="bg-white/80" style={{ gridColumn: '2 / 4', gridRow: '2 / 4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="bg-white" style={{ gridColumn: '2 / 4', gridRow: '2 / 4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div className="text-center p-4">
                             <div className="text-lg font-black text-violet-600 tracking-tighter uppercase">Rashi</div>
                             <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Main Chart</div>

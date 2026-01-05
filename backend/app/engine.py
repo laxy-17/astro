@@ -140,8 +140,7 @@ PLANET_MAP = {
     'Rahu': swe.TRUE_NODE,
     'Uranus': swe.URANUS,
     'Neptune': swe.NEPTUNE,
-    'Pluto': swe.PLUTO,
-    'Ketu': swe.TRUE_NODE # Ketu is 180 deg from Rahu
+    'Pluto': swe.PLUTO
 }
 
 SIGNS = [
